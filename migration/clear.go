@@ -45,7 +45,7 @@ func clearCMD(resolver func(driver string) *sqlx.DB) *cobra.Command {
 		}
 
 		for _, table := range tables {
-			_, err := db.Exec("DROP TABLE IF EXISTS " + table)
+			_, err := db.Exec("DROP TABLE IF EXISTS " + table + ";")
 			if err != nil {
 				fmt.Printf("failed: %s\n", err.Error())
 				return

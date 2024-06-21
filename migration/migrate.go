@@ -69,7 +69,7 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			}
 
 			// Add to migrated table
-			_, err = db.Exec("INSERT INTO migrations VALUES(?, 0)", mFile)
+			_, err = db.Exec("INSERT INTO migrations VALUES(?, 0);", mFile)
 			if err != nil {
 				fmt.Printf("\nmigration failed\n%s\n%s\n", mFile, err.Error())
 				return

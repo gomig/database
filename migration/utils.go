@@ -30,12 +30,10 @@ func validateStatement(statement string, db *sqlx.DB) error {
 }
 
 func createMigrationTable(db *sqlx.DB) {
-	cmd := `
-    CREATE TABLE IF NOT EXISTS migrations(
+	cmd := `CREATE TABLE IF NOT EXISTS migrations(
         name VARCHAR(100) PRIMARY KEY,
         is_seed BOOLEAN NOT NULL DEFAULT FALSE
-    )
-    `
+    );`
 	stmt, err := db.Prepare(cmd)
 	if err != nil {
 		fmt.Println(err)
@@ -50,7 +48,7 @@ func createMigrationTable(db *sqlx.DB) {
 
 func getMigratedFiles(db *sqlx.DB, isSeed bool) []string {
 	var migrated []string
-	rows, err := db.Query("select name from migrations WHERE is_seed = ?", isSeed)
+	rows, err := db.Query("select name from migrations WHERE is_seed = ?;", isSeed)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
