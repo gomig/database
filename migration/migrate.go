@@ -2,7 +2,7 @@ package migration
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
@@ -45,7 +45,7 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			fmt.Printf("\nmigrating: %s\n", mFile)
 
 			// Read file
-			content, err := ioutil.ReadFile(paths[i])
+			content, err := os.ReadFile(paths[i])
 			if err != nil {
 				fmt.Printf("failed: %s\n", err.Error())
 				return
@@ -69,7 +69,7 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			}
 
 			// Add to migrated table
-			_, err = db.Exec("INSERT INTO migrations VALUES(?, 0);", mFile)
+			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations VALUES(%s, 0);", mFile))
 			if err != nil {
 				fmt.Printf("\nmigration failed\n%s\n%s\n", mFile, err.Error())
 				return

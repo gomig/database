@@ -154,7 +154,7 @@ rootCmd.AddCommand(migration.MigrationCommand(myResolver, "--APP-DB", "./databas
 
 ### Clear
 
-Delete all database table.
+Delete all database table. these command run `clean.sql` migration file.
 
 ```bash
 myApp migration clear --driver

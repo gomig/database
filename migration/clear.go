@@ -2,6 +2,8 @@ package migration
 
 import (
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
@@ -19,35 +21,31 @@ func clearCMD(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			return
 		}
 
+		migrationsDir, err := cmd.Flags().GetString("migration_dir")
+		if err != nil {
+			fmt.Printf("failed: %s\n", err.Error())
+			return
+		}
+
 		db := resolver(driver)
 		if db == nil {
 			fmt.Printf("failed: %s database driver not found\n", driver)
 			return
 		}
 
-		_, err = db.Exec("SET FOREIGN_KEY_CHECKS=0;")
+		// Read file
+		content, err := os.ReadFile(path.Join(migrationsDir, "clean.sql"))
 		if err != nil {
 			fmt.Printf("failed: %s\n", err.Error())
 			return
 		}
 
-		res, err := db.Query("SHOW TABLES;")
-		if err != nil {
-			fmt.Printf("failed: %s\n", err.Error())
-			return
-		}
+		commands := getValidLines(string(content))
 
-		var tables []string
-		for res.Next() {
-			var table string
-			res.Scan(&table)
-			tables = append(tables, table)
-		}
-
-		for _, table := range tables {
-			_, err := db.Exec("DROP TABLE IF EXISTS " + table + ";")
-			if err != nil {
-				fmt.Printf("failed: %s\n", err.Error())
+		// Validate commands
+		for _, cmd := range commands {
+			if err := validateStatement(cmd, db); err != nil {
+				fmt.Printf("\nclear failed\n%s\n", err.Error())
 				return
 			}
 		}
@@ -56,6 +54,14 @@ func clearCMD(resolver func(driver string) *sqlx.DB) *cobra.Command {
 		if err != nil {
 			fmt.Printf("failed: %s\n", err.Error())
 			return
+		}
+
+		// Run commands
+		for _, cmd := range commands {
+			if _, err = db.Exec(cmd); err != nil {
+				fmt.Printf("\nclear failed\n%s\n", err.Error())
+				return
+			}
 		}
 
 		fmt.Println("cleared!")

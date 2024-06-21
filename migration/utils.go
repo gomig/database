@@ -48,7 +48,7 @@ func createMigrationTable(db *sqlx.DB) {
 
 func getMigratedFiles(db *sqlx.DB, isSeed bool) []string {
 	var migrated []string
-	rows, err := db.Query("select name from migrations WHERE is_seed = ?;", isSeed)
+	rows, err := db.Query(fmt.Sprintf("select name from migrations WHERE is_seed = %v;", isSeed))
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -76,7 +76,7 @@ func getMigrationFiles(migrated []string, dir string) ([]string, []string) {
 		if !f.IsDir() {
 			r, err := regexp.MatchString(".sql", f.Name())
 
-			if err == nil && r && !strings.HasPrefix(f.Name(), "_") {
+			if err == nil && r && !strings.HasPrefix(f.Name(), "_") && f.Name() != "clean.sql" {
 				if len(migrated) == 0 {
 					temp[f.Name()] = path
 				} else {
