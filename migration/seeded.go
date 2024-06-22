@@ -25,7 +25,7 @@ func seededCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			return
 		}
 
-		res, err := db.Query("SELECT name FROM migrations WHERE is_seed = TRUE;")
+		res, err := db.Query("SELECT name FROM migrations WHERE mode = 'S';")
 		if err != nil {
 			fmt.Printf("failed: %s\n", err.Error())
 			return

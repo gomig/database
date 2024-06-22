@@ -42,7 +42,7 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 		// Run migrations
 		for i, mFile := range files {
 
-			fmt.Printf("\nmigrating: %s\n", mFile)
+			fmt.Printf("\nmigrate: %s\n", mFile)
 
 			// Read file
 			content, err := os.ReadFile(paths[i])
@@ -55,7 +55,7 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			// Validate commands
 			for _, cmd := range commands {
 				if err := validateStatement(cmd, db); err != nil {
-					fmt.Printf("\nmigration failed\n%s\n%s\n", mFile, err.Error())
+					fmt.Printf("\nmigrate failed\n%s\n%s\n", mFile, err.Error())
 					return
 				}
 			}
@@ -63,19 +63,19 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			// Run Migration
 			for _, cmd := range commands {
 				if _, err = db.Exec(cmd); err != nil {
-					fmt.Printf("\nmigration failed\n%s\n%s\n", mFile, err.Error())
+					fmt.Printf("\nmigrate failed\n%s\n%s\n", mFile, err.Error())
 					return
 				}
 			}
 
 			// Add to migrated table
-			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations VALUES(%s, 0);", mFile))
+			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations VALUES(%s, 'M');", mFile))
 			if err != nil {
-				fmt.Printf("\nmigration failed\n%s\n%s\n", mFile, err.Error())
+				fmt.Printf("\nmigrate failed\n%s\n%s\n", mFile, err.Error())
 				return
 			}
 
-			fmt.Printf("migrated!\n\n")
+			fmt.Printf("DONE\n\n")
 		}
 	}
 	return cmd

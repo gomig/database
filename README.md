@@ -57,6 +57,19 @@ import "github.com/gomig/database"
 db, err := database.NewMySQLConnector("", "root", "root", "myDB")
 ```
 
+## Postgres Driver
+
+Create new Postgres connection. this function return a `"github.com/jmoiron/sqlx"` instance.
+
+```go
+// Signature:
+NewPostgresConnector(host string, port string, user string, password string, database string) (*sqlx.DB, error)
+
+// Example:
+import "github.com/gomig/database"
+db, err := database.NewPostgresConnector("localhost", "", "postgres", "", "")
+```
+
 ## Query Builder
 
 Make complex query use `Query` structure.

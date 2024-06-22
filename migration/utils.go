@@ -24,23 +24,19 @@ func getValidLines(content string) []string {
 }
 
 func validateStatement(statement string, db *sqlx.DB) error {
-	stmt, err := db.Prepare(statement)
-	defer stmt.Close()
+	_, err := db.Prepare(statement)
 	return err
 }
 
 func createMigrationTable(db *sqlx.DB) {
 	cmd := `CREATE TABLE IF NOT EXISTS migrations(
-        name VARCHAR(100) PRIMARY KEY,
-        is_seed BOOLEAN NOT NULL DEFAULT FALSE
+        name VARCHAR(100) NOT NULL PRIMARY KEY,
+        mode VARCHAR(1) NOT NULL DEFAULT 'M'
     );`
-	stmt, err := db.Prepare(cmd)
-	if err != nil {
+	if stmt, err := db.Prepare(cmd); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	}
-	_, err = stmt.Exec()
-	if err != nil {
+	} else if _, err = stmt.Exec(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -48,24 +44,16 @@ func createMigrationTable(db *sqlx.DB) {
 
 func getMigratedFiles(db *sqlx.DB, isSeed bool) []string {
 	var migrated []string
-	rows, err := db.Query(fmt.Sprintf("select name from migrations WHERE is_seed = %v;", isSeed))
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	for rows.Next() {
-		var migration string
-		err := rows.Scan(&migration)
-		if err != nil {
+	if isSeed {
+		if err := db.Select(&migrated, "select name from migrations WHERE mode = 'S';"); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		migrated = append(migrated, migration)
-	}
-	err = rows.Err()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	} else {
+		if err := db.Select(&migrated, "select name from migrations WHERE mode = 'M';"); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 	return migrated
 }

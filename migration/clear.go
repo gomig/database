@@ -50,12 +50,6 @@ func clearCMD(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			}
 		}
 
-		_, err = db.Exec("SET FOREIGN_KEY_CHECKS=1;")
-		if err != nil {
-			fmt.Printf("failed: %s\n", err.Error())
-			return
-		}
-
 		// Run commands
 		for _, cmd := range commands {
 			if _, err = db.Exec(cmd); err != nil {
@@ -64,7 +58,7 @@ func clearCMD(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			}
 		}
 
-		fmt.Println("cleared!")
+		fmt.Println("DONE")
 	}
 	return cmd
 }

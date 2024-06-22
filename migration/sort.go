@@ -2,20 +2,18 @@ package migration
 
 import (
 	"strconv"
-	"strings"
+
+	"github.com/gomig/utils"
 )
 
 type byNumber []string
 
 func getCode(str string) int {
-	res := 0
-	parts := strings.Split(str, "-")
-	if len(parts) > 1 {
-		if res, err := strconv.Atoi(parts[0]); err == nil {
-			return res
-		}
+	if res, err := strconv.Atoi(utils.ExtractNumbers(str)); err == nil {
+		return res
+	} else {
+		return 0
 	}
-	return res
 }
 
 func (s byNumber) Len() int {

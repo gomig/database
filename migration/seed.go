@@ -2,7 +2,6 @@ package migration
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/jmoiron/sqlx"
@@ -46,7 +45,7 @@ func seedCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			fmt.Printf("\nseeding: %s\n", mFile)
 
 			// Read file
-			content, err := ioutil.ReadFile(paths[i])
+			content, err := os.ReadFile(paths[i])
 			if err != nil {
 				fmt.Printf("failed: %s\n", err.Error())
 				return
@@ -56,7 +55,7 @@ func seedCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			// Validate commands
 			for _, cmd := range commands {
 				if err := validateStatement(cmd, db); err != nil {
-					fmt.Printf("\nseeding failed\n%s\n%s\n", mFile, err.Error())
+					fmt.Printf("\nseed failed\n%s\n%s\n", mFile, err.Error())
 					os.Exit(1)
 					return
 				}
@@ -65,21 +64,21 @@ func seedCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			// Run Seeds
 			for _, cmd := range commands {
 				if _, err = db.Exec(cmd); err != nil {
-					fmt.Printf("\nseeding failed\n%s\n%s\n", mFile, err.Error())
+					fmt.Printf("\nseed failed\n%s\n%s\n", mFile, err.Error())
 					os.Exit(1)
 					return
 				}
 			}
 
 			// Add to seed table
-			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations VALUES(%s, 1);", mFile))
+			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations VALUES(%s, 'S');", mFile))
 			if err != nil {
-				fmt.Printf("\nseeding failed\n%s\n%s\n", mFile, err.Error())
+				fmt.Printf("\nseed failed\n%s\n%s\n", mFile, err.Error())
 				os.Exit(1)
 				return
 			}
 
-			fmt.Printf("seeded\n\n")
+			fmt.Printf("DONE\n\n")
 		}
 	}
 	return cmd
