@@ -51,17 +51,8 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 				return
 			}
 
-			commands := getValidLines(string(content))
-			// Validate commands
-			for _, cmd := range commands {
-				if err := validateStatement(cmd, db); err != nil {
-					fmt.Printf("\nmigrate failed\n%s\n%s\n", mFile, err.Error())
-					return
-				}
-			}
-
 			// Run Migration
-			for _, cmd := range commands {
+			for _, cmd := range getValidLines(string(content)) {
 				if _, err = db.Exec(cmd); err != nil {
 					fmt.Printf("\nmigrate failed\n%s\n%s\n", mFile, err.Error())
 					return
@@ -69,7 +60,7 @@ func migrateCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			}
 
 			// Add to migrated table
-			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations VALUES(%s, 'M');", mFile))
+			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations(name, mode) VALUES('%s', 'M');", mFile))
 			if err != nil {
 				fmt.Printf("\nmigrate failed\n%s\n%s\n", mFile, err.Error())
 				return

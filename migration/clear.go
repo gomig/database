@@ -40,18 +40,8 @@ func clearCMD(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			return
 		}
 
-		commands := getValidLines(string(content))
-
-		// Validate commands
-		for _, cmd := range commands {
-			if err := validateStatement(cmd, db); err != nil {
-				fmt.Printf("\nclear failed\n%s\n", err.Error())
-				return
-			}
-		}
-
 		// Run commands
-		for _, cmd := range commands {
+		for _, cmd := range getValidLines(string(content)) {
 			if _, err = db.Exec(cmd); err != nil {
 				fmt.Printf("\nclear failed\n%s\n", err.Error())
 				return

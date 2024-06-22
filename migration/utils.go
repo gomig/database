@@ -23,11 +23,6 @@ func getValidLines(content string) []string {
 	return res
 }
 
-func validateStatement(statement string, db *sqlx.DB) error {
-	_, err := db.Prepare(statement)
-	return err
-}
-
 func createMigrationTable(db *sqlx.DB) {
 	cmd := `CREATE TABLE IF NOT EXISTS migrations(
         name VARCHAR(100) NOT NULL PRIMARY KEY,

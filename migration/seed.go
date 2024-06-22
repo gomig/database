@@ -51,18 +51,8 @@ func seedCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 				return
 			}
 
-			commands := getValidLines(string(content))
-			// Validate commands
-			for _, cmd := range commands {
-				if err := validateStatement(cmd, db); err != nil {
-					fmt.Printf("\nseed failed\n%s\n%s\n", mFile, err.Error())
-					os.Exit(1)
-					return
-				}
-			}
-
 			// Run Seeds
-			for _, cmd := range commands {
+			for _, cmd := range getValidLines(string(content)) {
 				if _, err = db.Exec(cmd); err != nil {
 					fmt.Printf("\nseed failed\n%s\n%s\n", mFile, err.Error())
 					os.Exit(1)
@@ -71,7 +61,7 @@ func seedCmd(resolver func(driver string) *sqlx.DB) *cobra.Command {
 			}
 
 			// Add to seed table
-			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations VALUES(%s, 'S');", mFile))
+			_, err = db.Exec(fmt.Sprintf("INSERT INTO migrations(name, mode) VALUES('%s', 'S');", mFile))
 			if err != nil {
 				fmt.Printf("\nseed failed\n%s\n%s\n", mFile, err.Error())
 				os.Exit(1)
