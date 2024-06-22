@@ -165,6 +165,25 @@ import "github.com/gomig/database/migration"
 rootCmd.AddCommand(migration.MigrationCommand(myResolver, "--APP-DB", "./database/migrations", "./database/seeds"))
 ```
 
+### Migrate Manually
+
+```go
+// Signature:
+func ExecuteScripts(db *sqlx.DB, commands []MigrationScript) error
+
+
+// Example
+import "github.com/gomig/database/migration"
+Commands := []migration.MigrationScript{
+    {Name: "001-create-user-table", IsSeed: false, CMD: "CREATE TABLE IF NOT EXISTS ..."},
+}
+if err := migration.ExecuteScripts(myDb, commands); err != nil {
+    panic(err.Error())
+} else {
+    fmt.Println("Migrated")
+}
+```
+
 ### Clear
 
 Delete all database table. these command run `clean.sql` migration file.
