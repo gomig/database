@@ -74,18 +74,7 @@ func (q qBuilder) ToSQL(counter int) string {
 		}
 	}
 	if q.driver == DriverPostgres {
-		if counter <= 0 {
-			counter = 1
-		}
-		for {
-			if strings.Contains(command, "?") {
-				command = strings.Replace(command, "?", fmt.Sprintf("$%d", counter), 1)
-				counter++
-			} else {
-				break
-			}
-		}
-
+		command = numericArgs(command, counter)
 	}
 	return command
 }

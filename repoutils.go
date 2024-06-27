@@ -1,6 +1,10 @@
 package database
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+	"strings"
+)
 
 // structQueryColumns get columns list from `q` or `db` struct tag
 func structQueryColumns(v any) []string {
@@ -73,4 +77,20 @@ func structValues(v any) []any {
 		}
 		return res
 	}
+}
+
+// numericArgs convert ? placeholder to numeric $1 placeholder
+func numericArgs(query string, counter int) string {
+	if counter <= 0 {
+		counter = 1
+	}
+	for {
+		if strings.Contains(query, "?") {
+			query = strings.Replace(query, "?", fmt.Sprintf("$%d", counter), 1)
+			counter++
+		} else {
+			break
+		}
+	}
+	return query
 }

@@ -6,10 +6,10 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Find get multiple entity
+// Find get multiple entity (resolve entity from db struct tag)
 //
 // You can pass resolver to manipulate record after read
-// you can use `q` or `db` struct tag to map field to database column
+// you can use `q` struct for advanced field select query
 func Find[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) ([]T, error) {
 	if rows, err := db.Queryx(ResolveQuery[T](query), args...); err == sql.ErrNoRows {
 		return []T{}, nil

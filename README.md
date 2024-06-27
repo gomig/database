@@ -40,7 +40,7 @@ Set of generic functions to work with database. For reading from database `Find`
 
 **Note:** You can implement `Decoder` interface to call struct `Decode() error` method after read by `Find` and `FindOne` functions.
 
-**Note:** You can auto fill fields list by putting placeholder (`?`) in select field list.
+**Note:** You can auto fill select columns from struct fields putting `SELECT ...` placeholder.
 
 ```go
 type User struct{
@@ -49,7 +49,7 @@ type User struct{
     Owner *string `q:"owners.name as owner" db:"owner"` // must used for custom field
 }
 
-users, err := database.Find[User](db, `SELECT ? FROM users LEFT JOIN owners ON users.owner_id = owners.id`, nil)
+users, err := database.Find[User](db, `SELECT ... FROM users LEFT JOIN owners ON users.owner_id = owners.id`, nil)
 // this function generate following query string:
 // SELECT id, name, owners.name as owner FROM users LEFT JOIN owners ON users.owner_id = owners.id
 ```

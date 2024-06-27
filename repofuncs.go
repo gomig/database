@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// ResolveQuery get list of fields from struct `q` or `db` tag and replace with ? keyword in query
+// ResolveQuery get list of fields from struct `q` and `db` tag and replace with `SELECT ...` keyword in query
 func ResolveQuery[T any](query string) string {
 	var sample T
-	if strings.Contains(query, "?") {
-		return strings.ReplaceAll(query, "?", strings.Join(structQueryColumns(sample), ","))
+	if strings.Contains(query, "SELECT ...") {
+		return strings.Replace(query, "SELECT ...", "SELECT "+strings.Join(structQueryColumns(sample), ","), 1)
 	} else {
 		return query
 	}
@@ -19,26 +19,24 @@ func ResolveQuery[T any](query string) string {
 //
 // @returns insert command and params as result
 func ResolveInsert[T any](entity T, table string, driver Driver) (string, []any) {
-	tags := structColumns(entity)
+	fields := structColumns(entity)
 	placeholders := make([]string, 0)
-
-	if driver == DriverMySQL {
-		for range tags {
-			placeholders = append(placeholders, "?")
-		}
-	} else {
-		for i := range tags {
-			placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
-		}
+	for range fields {
+		placeholders = append(placeholders, "?")
 	}
 
-	return fmt.Sprintf(
-			"INSERT INTO %s(%s) VALUES(%s);",
-			table,
-			strings.Join(tags, ","),
-			strings.Join(placeholders, ","),
-		),
-		structValues(entity)
+	command := fmt.Sprintf(
+		"INSERT INTO %s(%s) VALUES(%s);",
+		table,
+		strings.Join(fields, ","),
+		strings.Join(placeholders, ","),
+	)
+
+	if driver == DriverPostgres {
+		command = numericArgs(command, 1)
+	}
+
+	return command, structValues(entity)
 }
 
 // ResolveUpdate create update cmd for table and
@@ -46,34 +44,21 @@ func ResolveInsert[T any](entity T, table string, driver Driver) (string, []any)
 // You must pass condition argument with ?
 // @returns query and params as result
 func ResolveUpdate[T any](entity T, table string, driver Driver, condition string, args ...any) (string, []any) {
-	tags := structColumns(entity)
-
-	if driver == DriverMySQL {
-		for i, v := range tags {
-			tags[i] = fmt.Sprintf("%s = ?", v)
-		}
-	} else {
-		counter := 0
-		for i, v := range tags {
-			tags[i] = fmt.Sprintf("%s = $%d", v, i+1)
-			counter = i
-		}
-		counter++
-		for {
-			if strings.Contains(condition, "?") {
-				condition = strings.Replace(condition, "?", fmt.Sprintf("$%d", counter+1), 1)
-				counter++
-			} else {
-				break
-			}
-		}
+	fields := structColumns(entity)
+	for i, v := range fields {
+		fields[i] = fmt.Sprintf("%s = ?", v)
 	}
 
-	return fmt.Sprintf(
-			"UPDATE %s SET %s WHERE %s;",
-			table,
-			strings.Join(tags, ","),
-			condition,
-		),
-		append(structValues(entity), args...)
+	command := fmt.Sprintf(
+		"UPDATE %s SET %s WHERE %s;",
+		table,
+		strings.Join(fields, ","),
+		condition,
+	)
+
+	if driver == DriverPostgres {
+		command = numericArgs(command, 1)
+	}
+
+	return command, append(structValues(entity), args...)
 }
