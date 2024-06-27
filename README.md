@@ -36,7 +36,7 @@ Set of generic functions to work with database. For reading from database `Find`
 
 **Note:** `q` struct tag used to advanced field name in query.
 
-**Note:** You must use `?` as placeholder. Repository functions will transform placeholder automatically to `$1, $2, etc..` automatically.
+**Note:** You must use `?` as placeholder. Repository functions will transform placeholder automatically to `$1, $2` for postgres driver.
 
 **Note:** You can implement `Decoder` interface to call struct `Decode() error` method after read by `Find` and `FindOne` functions.
 
@@ -60,7 +60,7 @@ Read query results to struct slice. You can use `resolver` callback to manipulat
 
 ```go
 // Signature:
-func Find[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) ([]T, error)
+func Find[T any](db *sqlx.DB, driver database.Driver, query string, resolver func(*T), args ...any) ([]T, error)
 ```
 
 ### FindOne
@@ -69,7 +69,7 @@ Read single result or return nil if not exists.
 
 ```go
 // Signature:
-func FindOne[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) (*T, error);
+func FindOne[T any](db *sqlx.DB, driver database.Driver, query string, resolver func(*T), args ...any) (*T, error);
 ```
 
 ### Count
@@ -78,7 +78,7 @@ Get count of documents.
 
 ```go
 // Signature:
-func Count(db *sqlx.DB, query string, args ...any) (int64, error);
+func Count(db *sqlx.DB, driver database.Driver, query string, args ...any) (int64, error);
 ```
 
 ### Insert
@@ -87,7 +87,7 @@ Insert struct to database. This function use `db` tag to map struct field to dat
 
 ```go
 // Signature:
-func Insert(db *sqlx.DB, entity any, table string, driver Driver) (sql.Result, error);
+func Insert(db *sqlx.DB, entity any, table string, driver database.Driver) (sql.Result, error);
 ```
 
 ### Update
@@ -96,7 +96,7 @@ Update struct in database. This function use `db` tag to map struct field to dat
 
 ```go
 // Signature:
-func Update(db *sqlx.DB, entity any, table string, driver Driver, condition string, args ...any) (sql.Result, error)
+func Update(db *sqlx.DB, entity any, table string, driver database.Driver, condition string, args ...any) (sql.Result, error)
 ```
 
 ## Query Builder

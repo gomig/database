@@ -10,8 +10,8 @@ import (
 //
 // You can pass resolver to manipulate record after read
 // you can use `q` struct for advanced field select query
-func Find[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) ([]T, error) {
-	if rows, err := db.Queryx(ResolveQuery[T](query), args...); err == sql.ErrNoRows {
+func Find[T any](db *sqlx.DB, driver Driver, query string, resolver func(*T), args ...any) ([]T, error) {
+	if rows, err := db.Queryx(ResolveQuery[T](query, driver), args...); err == sql.ErrNoRows {
 		return []T{}, nil
 	} else if err != nil {
 		return nil, err
@@ -45,9 +45,9 @@ func Find[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) ([]T
 //
 // You can pass resolver to manipulate record after read
 // you can use `q` or `db` struct tag to map field to database column
-func FindOne[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) (*T, error) {
+func FindOne[T any](db *sqlx.DB, driver Driver, query string, resolver func(*T), args ...any) (*T, error) {
 	res := new(T)
-	if err := db.Get(res, ResolveQuery[T](query), args...); err == sql.ErrNoRows {
+	if err := db.Get(res, ResolveQuery[T](query, driver), args...); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -67,8 +67,11 @@ func FindOne[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) (
 }
 
 // Count get count of records
-func Count(db *sqlx.DB, query string, args ...any) (int64, error) {
+func Count(db *sqlx.DB, driver Driver, query string, args ...any) (int64, error) {
 	var res int64
+	if driver == DriverPostgres {
+		query = numericArgs(query, 1)
+	}
 	if err := db.Get(&res, query, args...); err != nil {
 		return 0, err
 	} else {

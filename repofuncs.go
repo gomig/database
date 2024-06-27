@@ -6,13 +6,17 @@ import (
 )
 
 // ResolveQuery get list of fields from struct `q` and `db` tag and replace with `SELECT ...` keyword in query
-func ResolveQuery[T any](query string) string {
+func ResolveQuery[T any](query string, driver Driver) string {
 	var sample T
-	if strings.Contains(query, "...") {
-		return strings.Replace(query, "...", strings.Join(structQueryColumns(sample), ","), 1)
-	} else {
-		return query
+	if strings.Contains(strings.ToLower(query), "select ...") {
+		query = strings.Replace(query, "...", strings.Join(structQueryColumns(sample), ","), 1)
 	}
+
+	if driver == DriverPostgres {
+		query = numericArgs(query, 1)
+	}
+
+	return query
 }
 
 // ResolveInsert create insert cmd for table
