@@ -34,6 +34,8 @@ db, err := database.NewPostgresConnector("localhost", "", "postgres", "", "")
 
 Set of generic functions to work with database. For reading from database `Find` and `FindOne` function use `q` or `db` fields to map struct field to database column.
 
+**Note:** You can implement `Decoder` interface to call struct `Decode() error` method after read by `Find` and `FindOne` functions.
+
 ### Find
 
 Read query results to struct slice. You can use `resolver` callback to manipulate record after read from database.
