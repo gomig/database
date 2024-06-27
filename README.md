@@ -32,9 +32,27 @@ db, err := database.NewPostgresConnector("localhost", "", "postgres", "", "")
 
 ## Repository
 
-Set of generic functions to work with database. For reading from database `Find` and `FindOne` function use `q` or `db` fields to map struct field to database column.
+Set of generic functions to work with database. For reading from database `Find` and `FindOne` function use `q` and `db` fields to map struct field to database column.
+
+**Note:** `q` struct tag used to advanced field name in query.
+
+**Note:** You must use `?` as placeholder. Repository functions will transform placeholder automatically to `$1, $2, etc..` automatically.
 
 **Note:** You can implement `Decoder` interface to call struct `Decode() error` method after read by `Find` and `FindOne` functions.
+
+**Note:** You can auto fill fields list by putting placeholder (`?`) in select field list.
+
+```go
+type User struct{
+    Id    string `db:"id"`
+    Name  string `db:"name"`
+    Owner *string `q:"owners.name as owner" db:"owner"` // must used for custom field
+}
+
+users, err := database.Find[User](db, `SELECT ? FROM users LEFT JOIN owners ON users.owner_id = owners.id`, nil)
+// this function generate following query string:
+// SELECT id, name, owners.name as owner FROM users LEFT JOIN owners ON users.owner_id = owners.id
+```
 
 ### Find
 
