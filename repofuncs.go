@@ -8,8 +8,8 @@ import (
 // ResolveQuery get list of fields from struct `q` and `db` tag and replace with `SELECT ...` keyword in query
 func ResolveQuery[T any](query string) string {
 	var sample T
-	if strings.Contains(query, "SELECT ...") {
-		return strings.Replace(query, "SELECT ...", "SELECT "+strings.Join(structQueryColumns(sample), ","), 1)
+	if strings.Contains(query, "...") {
+		return strings.Replace(query, "...", strings.Join(structQueryColumns(sample), ","), 1)
 	} else {
 		return query
 	}
