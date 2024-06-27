@@ -2,6 +2,155 @@
 
 A set of database types, driver and query builder for sql based databases.
 
+## Drivers
+
+### MySQL Driver
+
+Create new MySQL connection. this function return a `"github.com/jmoiron/sqlx"` instance.
+
+```go
+// Signature:
+NewMySQLConnector(host string, username string, password string, database string) (*sqlx.DB, error)
+
+// Example:
+import "github.com/gomig/database"
+db, err := database.NewMySQLConnector("", "root", "root", "myDB")
+```
+
+### Postgres Driver
+
+Create new Postgres connection. this function return a `"github.com/jmoiron/sqlx"` instance.
+
+```go
+// Signature:
+NewPostgresConnector(host string, port string, user string, password string, database string) (*sqlx.DB, error)
+
+// Example:
+import "github.com/gomig/database"
+db, err := database.NewPostgresConnector("localhost", "", "postgres", "", "")
+```
+
+## Repository
+
+Set of generic functions to work with database. For reading from database `Find` and `FindOne` function use `q` or `db` fields to map struct field to database column.
+
+### Find
+
+Read query results to struct slice. You can use `resolver` callback to manipulate record after read from database.
+
+```go
+// Signature:
+func Find[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) ([]T, error)
+```
+
+### FindOne
+
+Read single result or return nil if not exists.
+
+```go
+// Signature:
+func FindOne[T any](db *sqlx.DB, query string, resolver func(*T), args ...any) (*T, error);
+```
+
+### Count
+
+Get count of documents.
+
+```go
+// Signature:
+func Count(db *sqlx.DB, query string, args ...any) (int64, error);
+```
+
+### Insert
+
+Insert struct to database. This function use `db` tag to map struct field to database column.
+
+```go
+// Signature:
+func Insert(db *sqlx.DB, entity any, table string, driver Driver) (sql.Result, error);
+```
+
+### Update
+
+Update struct in database. This function use `db` tag to map struct field to database column.
+
+```go
+// Signature:
+func Update(db *sqlx.DB, entity any, table string, driver Driver, condition string, args ...any) (sql.Result, error)
+```
+
+## Query Builder
+
+Make complex query use for sql `WHERE` command.
+
+**Note:** You can use special `@in` keyword in your query and query builder make a `IN(param1, param2)` query for you.
+
+```go
+import "github.com/gomig/database"
+import "fmt"
+
+query := database.NewQuery(database.DriverPostgres)
+query.And("firstname LIKE '%?%'", "John")
+query.And("role @in", "admin", "support", "user")
+query.OrClosure("age > ? AND age < ?", 15, 30)
+fmt.Print(query.ToSQL(1)) // " firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6)"
+fmt.Print(query.Params()) // [John admin support user 15 30]
+```
+
+### And
+
+Add new simple condition to query with `AND`.
+
+```go
+// Signature:
+And(cond string, args ...any)
+```
+
+### Or
+
+Add new simple condition to query with `OR`.
+
+```go
+// Signature:
+Or(cond string, args ...any)
+```
+
+### AndClosure
+
+Add new condition to query with `AND` in nested `()`.
+
+```go
+// Signature:
+AndClosure(cond string, args ...any)
+```
+
+### OrClosure
+
+Add new condition to query with `OR` in nested `()`.
+
+```go
+// Signature:
+OrClosure(cond string, args ...any)
+```
+
+### ToSQL
+
+Generate query with placeholder based on counter.
+
+```go
+// Signature:
+ToSQL(counter int) string
+```
+
+### Params
+
+Get list of query parameters.
+
+```go
+// Signature:
+Params() []any
+```
+
 ## Nullable Types
 
 database package contains nullable datatype for working with nullable data. nullable types implements **Scanners**, **Valuers**, **Marshaler** and **Unmarshaler** interfaces.
@@ -42,100 +191,6 @@ var a types.NullUInt32
 var a types.UInt32Slice
 var a types.NullUInt64
 var a types.UInt64Slice
-```
-
-## MySQL Driver
-
-Create new MySQL connection. this function return a `"github.com/jmoiron/sqlx"` instance.
-
-```go
-// Signature:
-NewMySQLConnector(host string, username string, password string, database string) (*sqlx.DB, error)
-
-// Example:
-import "github.com/gomig/database"
-db, err := database.NewMySQLConnector("", "root", "root", "myDB")
-```
-
-## Postgres Driver
-
-Create new Postgres connection. this function return a `"github.com/jmoiron/sqlx"` instance.
-
-```go
-// Signature:
-NewPostgresConnector(host string, port string, user string, password string, database string) (*sqlx.DB, error)
-
-// Example:
-import "github.com/gomig/database"
-db, err := database.NewPostgresConnector("localhost", "", "postgres", "", "")
-```
-
-## Query Builder
-
-Make complex query use `Query` structure.
-
-**Note:** You can use special `@in` keyword in your query and query builder make a `IN(params)` query for you.
-
-### Query Builder Methods
-
-#### Add
-
-Add new query.
-
-```go
-// Signature:
-Add(q Query)
-```
-
-#### Query
-
-Get query string.
-
-```go
-// Signature:
-Query() string
-```
-
-#### Params
-
-Get query builder parameters.
-
-```go
-// Signature:
-Params() []any
-```
-
-### Query Structure Fields
-
-**Type** _(String)_: Determine query type `AND`, `OR`, etc.
-
-**Query** _(String)_: Query string.
-
-**Params** _[]any_: Query parameters.
-
-**Closure** _bool_: Determine query is sub query or not.
-
-```go
-import "github.com/gomig/database"
-import "fmt"
-var qBuilder database.QueryBuilder
-qBuilder.Add(database.Query{
-    Query:  "firstname LIKE '%?%'",
-    Params: []any{"john"},
-})
-qBuilder.Add(database.Query{
-    Type: "AND",
-    Query:  "role @in",
-    Params: []any{"admin", "support", "user"},
-})
-qBuilder.Add(database.Query{
-    Type: "AND",
-    Query:  "age > ? AND age < ?",
-    Params: []any{15, 30},
-    Closure: true,
-})
-fmt.Print(qBuilder.Query()) // firstname LIKE '%?%' AND role IN(?, ?, ?) AND (age > ? AND age < ?)
-fmt.Print(qBuilder.Params()) // ["john", "admin", "support", "user", 15, 30]
 ```
 
 ## Migration
