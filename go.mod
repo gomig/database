@@ -1,4 +1,4 @@
-module github.com/gomig/database
+module github.com/gomig/database/v2
 
 go 1.21
 

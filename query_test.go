@@ -3,7 +3,7 @@ package database_test
 import (
 	"testing"
 
-	"github.com/gomig/database"
+	"github.com/gomig/database/v2"
 )
 
 func TestQueryBuilder(t *testing.T) {

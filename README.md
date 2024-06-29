@@ -13,7 +13,7 @@ Create new MySQL connection. this function return a `"github.com/jmoiron/sqlx"` 
 NewMySQLConnector(host string, username string, password string, database string) (*sqlx.DB, error)
 
 // Example:
-import "github.com/gomig/database"
+import "github.com/gomig/database/v2"
 db, err := database.NewMySQLConnector("", "root", "root", "myDB")
 ```
 
@@ -26,7 +26,7 @@ Create new Postgres connection. this function return a `"github.com/jmoiron/sqlx
 NewPostgresConnector(host string, port string, user string, password string, database string) (*sqlx.DB, error)
 
 // Example:
-import "github.com/gomig/database"
+import "github.com/gomig/database/v2"
 db, err := database.NewPostgresConnector("localhost", "", "postgres", "", "")
 ```
 
@@ -106,7 +106,7 @@ Make complex query use for sql `WHERE` command.
 **Note:** You can use special `@in` keyword in your query and query builder make a `IN(param1, param2)` query for you.
 
 ```go
-import "github.com/gomig/database"
+import "github.com/gomig/database/v2"
 import "fmt"
 
 query := database.NewQuery(database.DriverPostgres)
@@ -182,7 +182,7 @@ database package contains nullable datatype for working with nullable data. null
 ### Available Nullable Types
 
 ```go
-import "github.com/gomig/database/types"
+import "github.com/gomig/database/v2/types"
 var a types.NullBool
 var a types.NullFloat32
 var a types.Float32Slice
@@ -228,7 +228,7 @@ myApp migration [command]
 MigrationCommand(db *sqlx.DB, root string) *cobra.Command
 
 // Example
-import "github.com/gomig/database/migration"
+import "github.com/gomig/database/v2/migration"
 rootCmd.AddCommand(migration.MigrationCommand(myDB, "./database"))
 ```
 
