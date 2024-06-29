@@ -215,86 +215,151 @@ var a types.UInt64Slice
 
 ## Migration
 
-A set of command for migrating and seeding SQL database. This package use pure SQL file for migrating.
-
-Driver flag is optional and default driver used if this flag not passed. When using multiple database driver, this flag used by resolver function to get database driver by name.
-
-Migration and seed files directory will get at register time and also can set by flags.
+Advanced migration for SQL based database.
 
 **Note:** This package use `"github.com/jmoiron/sqlx"` as database driver.
 
-**Note:** All sub commands automatically registered when main migration command registered.
-
 ```bash
-myApp migration [command] --driver --migration_dir --seed_dir
-# or simply
-myApp migration [command] -d -m -s
+myApp migration [command]
 ```
 
 ```go
 // Signature:
-MigrationCommand(resolver func(driver string) *sqlx.DB, defDriver string, migDir string, seedDir string) *cobra.Command
+MigrationCommand(db *sqlx.DB, root string) *cobra.Command
 
 // Example
 import "github.com/gomig/database/migration"
-rootCmd.AddCommand(migration.MigrationCommand(myResolver, "--APP-DB", "./database/migrations", "./database/seeds"))
+rootCmd.AddCommand(migration.MigrationCommand(myDB, "./database"))
 ```
 
-### Migrate Manually
+### Migration Script Structure
+
+Each migration script or file can contains 4 main section and defined with `--- [SECTION <name>]` line. Each migration file can contains 4 section:
+
+- **UP:** Scripts on this section will run with `migration migrate` command.
+- **SCRIPT:** Scripts on this section will run with `migration script` command.
+- **SEED:** Scripts on this section will run with `migration seed` command.
+- **DOWN:** Scripts on this section will run with `migration down` command.
+
+**Note:** For writing multiple SQL script in single section you could add `-- [br]` in end of your command.
+
+### Usage
+
+#### new
+
+This command create a new timestamp based standard migration file.
+
+Flags:
+
+- `-d` or `--dir`: used to define directory of files.
+
+```bash
+myApp migration new "create user" -d "my sub/directory/path"
+```
+
+#### summery
+
+Show summery of migration executed on database.
+
+```bash
+myApp migration summery
+```
+
+#### up
+
+Run `UP` scripts.
+
+Flags:
+
+- `-d` or `--dir`: used to define directory of files.
+- `-n` or `--name`: used to run special script only.
+
+```bash
+myApp migration up -n "create user"
+```
+
+#### script
+
+Run `SCRIPT` scripts.
+
+Flags:
+
+- `-d` or `--dir`: used to define directory of files.
+- `-n` or `--name`: used to run special script only.
+
+```bash
+myApp migration script -d "some\sub\dir"
+```
+
+#### seed
+
+Run `SEED` scripts.
+
+Flags:
+
+- `-d` or `--dir`: used to define directory of files.
+- `-n` or `--name`: used to run special script only.
+
+```bash
+myApp migration seed
+```
+
+#### down
+
+Run `DOWN` scripts to rollback migrations.
+
+Flags:
+
+- `-d` or `--dir`: used to define directory of files.
+- `-n` or `--name`: used to run special script only.
+
+```bash
+myApp migration down
+```
+
+### Helpers Function
+
+#### Migrate
+
+This function run "UP" scripts from _migrations list_ on database and return succeeded list as result.
 
 ```go
 // Signature:
-func ExecuteScripts(db *sqlx.DB, commands []MigrationScript) error
-
-
-// Example
-import "github.com/gomig/database/migration"
-Commands := []migration.MigrationScript{
-    {Name: "001-create-user-table", IsSeed: false, CMD: "CREATE TABLE IF NOT EXISTS ..."},
-}
-if err := migration.ExecuteScripts(myDb, commands); err != nil {
-    panic(err.Error())
-} else {
-    fmt.Println("Migrated")
-}
+func Migrate(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
 ```
 
-### Clear
+#### Script
 
-Delete all database table. these command run `clean.sql` migration file.
+This function run "SCRIPT" scripts from _migrations list_ on database and return succeeded list as result.
 
-```bash
-myApp migration clear --driver
+```go
+// Signature:
+func Script(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
 ```
 
-### Migrate
+#### Seed
 
-Migrate database.
+This function run "SEED" scripts from _migrations list_ on database and return succeeded list as result.
 
-```bash
-myApp migration migrate --driver --migration_dir
+```go
+// Signature:
+func Seed(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
 ```
 
-### Migrated
+#### Rollback
 
-Show migrated files list.
+This function run "DOWN" scripts from _migrations list_ on database and return succeeded list as result.
 
-```bash
-myApp migration migrated --driver
+```go
+// Signature:
+func Seed(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
 ```
 
-### Seed
+#### ReadDirectory
 
-Seed database.
+This function read migration files to `[]migration.MigrationsT` entity.
 
-```bash
-myApp migration seed --driver --seed_dir
-```
-
-### Seeded
-
-Show seeded files list.
-
-```bash
-myApp migration seeded --driver
+```go
+// Signature:
+func ReadDirectory(dir string) (MigrationsT, error)
 ```
