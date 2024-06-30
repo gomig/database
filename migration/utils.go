@@ -94,6 +94,8 @@ func readLines(content string, section string) ([]string, error) {
 func readScripts(content string, section string) ([]string, error) {
 	if lines, err := readLines(content, section); err != nil {
 		return nil, err
+	} else if len(lines) == 0 {
+		return []string{}, nil
 	} else {
 		return strings.Split(strings.Join(lines, "\r\n"), "--[BR]"), nil
 	}
