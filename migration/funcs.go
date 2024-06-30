@@ -54,6 +54,8 @@ func Migrate(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error)
 				continue
 			} else if scripts, err := readScripts(migration.Content, "up"); err != nil {
 				return nil, err
+			} else if len(scripts) == 0 {
+				continue
 			} else {
 				for _, script := range scripts {
 					if _, err := db.Exec(script); err != nil {
@@ -90,6 +92,8 @@ func Script(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) 
 				continue
 			} else if scripts, err := readScripts(migration.Content, "script"); err != nil {
 				return nil, err
+			} else if len(scripts) == 0 {
+				continue
 			} else {
 				for _, script := range scripts {
 					if _, err := db.Exec(script); err != nil {
@@ -125,6 +129,8 @@ func Seed(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) {
 				continue
 			} else if scripts, err := readScripts(migration.Content, "seed"); err != nil {
 				return nil, err
+			} else if len(scripts) == 0 {
+				continue
 			} else {
 				for _, script := range scripts {
 					if _, err := db.Exec(script); err != nil {
