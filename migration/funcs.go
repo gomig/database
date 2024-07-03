@@ -158,6 +158,7 @@ func Rollback(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error
 		return nil, err
 	} else {
 		migrations := migrations.Filter(name)
+		migrations.Reverse()
 		res := make([]string, 0)
 		for _, migration := range migrations {
 			if migration.Name == "" {

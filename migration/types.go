@@ -43,7 +43,7 @@ func (m MigrationsT) Less(i, j int) bool {
 	return getTimestamp(m[i].Name) < getTimestamp(m[j].Name)
 }
 
-// filter migrations by name
+// Filter filter migrations by name
 func (m MigrationsT) Filter(name string) MigrationsT {
 	clear := func(str string) string {
 		return regexp.
@@ -63,5 +63,12 @@ func (m MigrationsT) Filter(name string) MigrationsT {
 		}
 
 		return res
+	}
+}
+
+// Reverse reverse array order
+func (m MigrationsT) Reverse() {
+	for i, j := 0, len(m)-1; i < j; i, j = i+1, j-1 {
+		m[i], m[j] = m[j], m[i]
 	}
 }
