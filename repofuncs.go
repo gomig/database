@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ResolveQuery get list of fields from struct `q` and `db` tag and replace with `SELECT ...` keyword in query
+// ResolveQuery get list of fields from struct `q` and `db` tag and replace with `SELECT ...;` keyword in query
 func ResolveQuery[T any](query string, driver Driver) string {
 	var sample T
 	if strings.Contains(strings.ToLower(query), "select ...") {

@@ -19,6 +19,9 @@ type QueryBuilder interface {
 	OrClosure(cond string, args ...any) QueryBuilder
 	// ToSQL generate query with placeholder based on counter
 	ToSQL(counter int) string
+	// ToString generate query string with
+	// This method replace @q with query to sql
+	ToString(pattern string, counter int, params ...any) string
 	// Params get list of query parameters
 	Params() []any
 }

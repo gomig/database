@@ -83,6 +83,10 @@ func (q qBuilder) ToSQL(counter int) string {
 	return command
 }
 
+func (q qBuilder) ToString(pattern string, counter int, args ...any) string {
+	return fmt.Sprintf(strings.Replace(pattern, "@q", q.ToSQL(counter), 1), args...)
+}
+
 func (q qBuilder) Params() []any {
 	args := make([]any, 0)
 	for _, q := range q.queries {

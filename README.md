@@ -90,6 +90,15 @@ Insert struct to database. This function use `db` tag to map struct field to dat
 func Insert(db *sqlx.DB, entity any, table string, driver database.Driver) (sql.Result, error);
 ```
 
+### InsertTx
+
+Insert struct to database using transaction. This function use `db` tag to map struct field to database column.
+
+```go
+// Signature:
+func InsertTx(tx *sql.Tx, entity any, table string, driver database.Driver) (sql.Result, error);
+```
+
 ### Update
 
 Update struct in database. This function use `db` tag to map struct field to database column.
@@ -97,6 +106,15 @@ Update struct in database. This function use `db` tag to map struct field to dat
 ```go
 // Signature:
 func Update(db *sqlx.DB, entity any, table string, driver database.Driver, condition string, args ...any) (sql.Result, error)
+```
+
+### UpdateTx
+
+Update struct in database using transaction. This function use `db` tag to map struct field to database column.
+
+```go
+// Signature:
+func UpdateTx(tx *sql.Tx, entity any, table string, driver database.Driver, condition string, args ...any) (sql.Result, error)
 ```
 
 ## Query Builder
@@ -160,6 +178,23 @@ Generate query with placeholder based on counter.
 ```go
 // Signature:
 ToSQL(counter int) string
+```
+
+### ToString
+
+Generate query string and replace `@q` with `ToSQL()`.
+
+```go
+// Signature:
+ToString(pattern string, counter int, params ...any) string
+
+// example
+import "github.com/gomig/database/v2"
+query := database.NewQuery(database.DriverPostgres).
+                And("name = ?", "John Doe").
+                And("id = ?", 3)
+sql := query.ToString("SELECT * FROM users WHERE @q ORDER BY %s %s;", 1, "name", "asc");
+// SELECT * FROM users WHERE name = $1 AND id = $2 ORDER BY name asc;
 ```
 
 ### Params

@@ -85,8 +85,20 @@ func Insert(db *sqlx.DB, entity any, table string, driver Driver) (sql.Result, e
 	return db.Exec(cmd, args...)
 }
 
+// InsertTx insert struct to database using transaction
+func InsertTx(tx *sql.Tx, entity any, table string, driver Driver) (sql.Result, error) {
+	cmd, args := ResolveInsert(entity, table, driver)
+	return tx.Exec(cmd, args...)
+}
+
 // Update update struct in database
 func Update(db *sqlx.DB, entity any, table string, driver Driver, condition string, args ...any) (sql.Result, error) {
 	cmd, args := ResolveUpdate(entity, table, driver, condition, args...)
 	return db.Exec(cmd, args...)
+}
+
+// UpdateTx update struct in database using transaction
+func UpdateTx(tx *sql.Tx, entity any, table string, driver Driver, condition string, args ...any) (sql.Result, error) {
+	cmd, args := ResolveUpdate(entity, table, driver, condition, args...)
+	return tx.Exec(cmd, args...)
 }
