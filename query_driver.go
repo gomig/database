@@ -22,6 +22,15 @@ func (q *qBuilder) And(cond string, args ...any) QueryBuilder {
 	}
 	return q
 }
+
+func (q *qBuilder) AndIf(ifCond bool, cond string, args ...any) QueryBuilder {
+	if ifCond {
+		return q.And(cond, args...)
+	} else {
+		return q
+	}
+}
+
 func (q *qBuilder) Or(cond string, args ...any) QueryBuilder {
 	if cond != "" {
 		q.queries = append(q.queries, Query{
@@ -33,6 +42,15 @@ func (q *qBuilder) Or(cond string, args ...any) QueryBuilder {
 	}
 	return q
 }
+
+func (q *qBuilder) OrIf(ifCond bool, cond string, args ...any) QueryBuilder {
+	if ifCond {
+		return q.Or(cond, args...)
+	} else {
+		return q
+	}
+}
+
 func (q *qBuilder) AndClosure(cond string, args ...any) QueryBuilder {
 	if cond != "" {
 		q.queries = append(q.queries, Query{
@@ -44,6 +62,15 @@ func (q *qBuilder) AndClosure(cond string, args ...any) QueryBuilder {
 	}
 	return q
 }
+
+func (q *qBuilder) AndClosureIf(ifCond bool, cond string, args ...any) QueryBuilder {
+	if ifCond {
+		return q.AndClosure(cond, args...)
+	} else {
+		return q
+	}
+}
+
 func (q *qBuilder) OrClosure(cond string, args ...any) QueryBuilder {
 	if cond != "" {
 		q.queries = append(q.queries, Query{
@@ -55,6 +82,15 @@ func (q *qBuilder) OrClosure(cond string, args ...any) QueryBuilder {
 	}
 	return q
 }
+
+func (q *qBuilder) OrClosureIf(ifCond bool, cond string, args ...any) QueryBuilder {
+	if ifCond {
+		return q.OrClosure(cond, args...)
+	} else {
+		return q
+	}
+}
+
 func (q qBuilder) ToSQL(counter int) string {
 	command := ""
 	for _, q := range q.queries {

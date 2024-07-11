@@ -127,10 +127,10 @@ Make complex query use for sql `WHERE` command.
 import "github.com/gomig/database/v2"
 import "fmt"
 
-query := database.NewQuery(database.DriverPostgres)
-query.And("firstname LIKE '%?%'", "John")
-query.And("role @in", "admin", "support", "user")
-query.OrClosure("age > ? AND age < ?", 15, 30)
+query := database.NewQuery(database.DriverPostgres).
+    And("firstname LIKE '%?%'", "John").
+    AndIf(myConditionPassed, "role @in", "admin", "support", "user").
+    OrClosure("age > ? AND age < ?", 15, 30)
 fmt.Print(query.ToSQL(1)) // " firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6)"
 fmt.Print(query.Params()) // [John admin support user 15 30]
 ```
@@ -141,7 +141,16 @@ Add new simple condition to query with `AND`.
 
 ```go
 // Signature:
-And(cond string, args ...any)
+And(cond string, args ...any) QueryBuilder
+```
+
+### AndIf
+
+Add new And condition if first parameter is true.
+
+```go
+// Signature:
+AndIf(ifCond bool, cond string, args ...any) QueryBuilder
 ```
 
 ### Or
@@ -150,7 +159,16 @@ Add new simple condition to query with `OR`.
 
 ```go
 // Signature:
-Or(cond string, args ...any)
+Or(cond string, args ...any) QueryBuilder
+```
+
+### OrIf
+
+Add new Or condition if first parameter is true.
+
+```go
+// Signature:
+OrIf(ifCond bool, cond string, args ...any) QueryBuilder
 ```
 
 ### AndClosure
@@ -159,7 +177,16 @@ Add new condition to query with `AND` in nested `()`.
 
 ```go
 // Signature:
-AndClosure(cond string, args ...any)
+AndClosure(cond string, args ...any) QueryBuilder
+```
+
+### AndClosureIf
+
+Add new AndClosure condition if first parameter is true.
+
+```go
+// Signature:
+AndClosureIf(ifCond bool, cond string, args ...any) QueryBuilder
 ```
 
 ### OrClosure
@@ -168,7 +195,16 @@ Add new condition to query with `OR` in nested `()`.
 
 ```go
 // Signature:
-OrClosure(cond string, args ...any)
+OrClosure(cond string, args ...any) QueryBuilder
+```
+
+### OrClosureIf
+
+Add new AndClosure condition if first parameter is true.
+
+```go
+// Signature:
+OrClosureIf(ifCond bool, cond string, args ...any) QueryBuilder
 ```
 
 ### ToSQL
