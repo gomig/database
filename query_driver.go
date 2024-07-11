@@ -11,7 +11,7 @@ type qBuilder struct {
 	driver  Driver
 }
 
-func (q *qBuilder) And(cond string, args ...any) {
+func (q *qBuilder) And(cond string, args ...any) QueryBuilder {
 	if cond != "" {
 		q.queries = append(q.queries, Query{
 			Type:    "AND",
@@ -20,8 +20,9 @@ func (q *qBuilder) And(cond string, args ...any) {
 			Closure: false,
 		})
 	}
+	return q
 }
-func (q *qBuilder) Or(cond string, args ...any) {
+func (q *qBuilder) Or(cond string, args ...any) QueryBuilder {
 	if cond != "" {
 		q.queries = append(q.queries, Query{
 			Type:    "OR",
@@ -30,8 +31,9 @@ func (q *qBuilder) Or(cond string, args ...any) {
 			Closure: false,
 		})
 	}
+	return q
 }
-func (q *qBuilder) AndClosure(cond string, args ...any) {
+func (q *qBuilder) AndClosure(cond string, args ...any) QueryBuilder {
 	if cond != "" {
 		q.queries = append(q.queries, Query{
 			Type:    "AND",
@@ -40,8 +42,9 @@ func (q *qBuilder) AndClosure(cond string, args ...any) {
 			Closure: true,
 		})
 	}
+	return q
 }
-func (q *qBuilder) OrClosure(cond string, args ...any) {
+func (q *qBuilder) OrClosure(cond string, args ...any) QueryBuilder {
 	if cond != "" {
 		q.queries = append(q.queries, Query{
 			Type:    "OR",
@@ -50,6 +53,7 @@ func (q *qBuilder) OrClosure(cond string, args ...any) {
 			Closure: true,
 		})
 	}
+	return q
 }
 func (q qBuilder) ToSQL(counter int) string {
 	command := ""
