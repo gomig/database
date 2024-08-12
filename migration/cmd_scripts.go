@@ -22,9 +22,9 @@ func scriptCmd(db *sqlx.DB, root string) *cobra.Command {
 		} else {
 			for _, file := range files {
 				if res, err := Script(db, flag(cmd, "name"), file); err != nil {
-					fmt.Printf("%s script failed: %s\n", file.Name, err.Error())
+					fmt.Printf("%s [SCRIPT] failed!\n\t%s\n", file.Name, err.Error())
 				} else if len(res) > 0 {
-					fmt.Printf("%s script done\n", file.Name)
+					fmt.Printf("%s [SCRIPT] ok!\n", file.Name)
 				}
 			}
 		}

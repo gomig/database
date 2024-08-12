@@ -22,9 +22,9 @@ func downCmd(db *sqlx.DB, root string) *cobra.Command {
 		} else {
 			for _, file := range files {
 				if res, err := Rollback(db, flag(cmd, "name"), file); err != nil {
-					fmt.Printf("%s rollback failed: %s\n", file.Name, err.Error())
+					fmt.Printf("%s [ROLLBACK] failed!\n\t%s\n", file.Name, err.Error())
 				} else if len(res) > 0 {
-					fmt.Printf("%s rollback done\n", file.Name)
+					fmt.Printf("%s [ROLLBACK] ok!\n", file.Name)
 				}
 			}
 		}

@@ -22,9 +22,9 @@ func upCmd(db *sqlx.DB, root string) *cobra.Command {
 		} else {
 			for _, file := range files {
 				if res, err := Migrate(db, flag(cmd, "name"), file); err != nil {
-					fmt.Printf("%s migrate failed: %s\n", file.Name, err.Error())
+					fmt.Printf("%s [MIGRATE] failed!\n\t%s\n", file.Name, err.Error())
 				} else if len(res) > 0 {
-					fmt.Printf("%s migrate done\n", file.Name)
+					fmt.Printf("%s [MIGRATE] ok!\n", file.Name)
 				}
 			}
 		}
