@@ -15,15 +15,18 @@ func seedCmd(db *sqlx.DB, root string) *cobra.Command {
 	cmd.Flags().StringP("name", "n", "", "migration name")
 	cmd.Flags().StringP("dir", "d", "", "directory path")
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		if migrations, err := ReadDirectory(uri(root, flag(cmd, "dir"))); err != nil {
+		if files, err := ReadDirectory(uri(root, flag(cmd, "dir"))); err != nil {
 			throw(err)
-		} else if len(migrations) == 0 {
+		} else if len(files) == 0 {
 			throw(errors.New("no migration found"))
-		} else if done, err := Seed(db, migrations, flag(cmd, "name")); err != nil {
-			throw(err)
 		} else {
-			for _, d := range done {
-				fmt.Printf("%s done\n", d)
+			for _, file := range files {
+				fmt.Printf("SEED %s:", file)
+				if res, err := Script(db, flag(cmd, "name"), file); err != nil {
+					fmt.Printf("FAIL! %s\n", err.Error())
+				} else if len(res) > 0 {
+					fmt.Printf("OK!\n")
+				}
 			}
 		}
 	}

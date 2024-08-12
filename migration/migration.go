@@ -12,6 +12,7 @@ func MigrationCommand(db *sqlx.DB, root string) *cobra.Command {
 	cmd.Short = "migrate database"
 	cmd.AddCommand(newCMD(root))
 	cmd.AddCommand(summeryCmd(db))
+	cmd.AddCommand(runCmd(db, root))
 	cmd.AddCommand(upCmd(db, root))
 	cmd.AddCommand(scriptCmd(db, root))
 	cmd.AddCommand(seedCmd(db, root))

@@ -12,8 +12,8 @@ import (
 )
 
 // ReadDirectory read migration from file system
-func ReadDirectory(dir string) (MigrationsT, error) {
-	result := make(MigrationsT, 0)
+func ReadDirectory(dir string) (MigrationFiles, error) {
+	result := make(MigrationFiles, 0)
 	if err := filepath.Walk(uri(dir), func(path string, f os.FileInfo, _ error) error {
 		if ok, err := regexp.MatchString(`^([0-9])(.+)(\.sql)$`, f.Name()); err != nil {
 			return err
@@ -21,7 +21,7 @@ func ReadDirectory(dir string) (MigrationsT, error) {
 			if content, err := os.ReadFile(path); err != nil {
 				return err
 			} else {
-				result = append(result, MigrationT{
+				result = append(result, MigrationFile{
 					Name:    f.Name(),
 					Content: string(content),
 				})
@@ -39,18 +39,18 @@ func ReadDirectory(dir string) (MigrationsT, error) {
 // Migrate run migration up on database
 //
 // pass migration name to run migrate on specific migration
-func Migrate(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) {
+func Migrate(db *sqlx.DB, name string, files ...MigrationFile) ([]string, error) {
 	if err := createMT(db); err != nil {
 		return nil, err
 	} else if migrated, err := getRunnedMigrate(db); err != nil {
 		return nil, err
 	} else {
-		migrations := migrations.Filter(name)
+		migrations := MigrationFiles(files).Filter(name)
 		res := make([]string, 0)
 		for _, migration := range migrations {
 			if migration.Name == "" {
 				return nil, errors.New("migration name is empty")
-			} else if migration.In(migrated...) {
+			} else if migration.in(migrated...) {
 				continue
 			} else if scripts, err := readScripts(migration.Content, "up"); err != nil {
 				return nil, err
@@ -77,18 +77,18 @@ func Migrate(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error)
 // Script run script migration on database
 //
 // pass migration name to run script on specific migration
-func Script(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) {
+func Script(db *sqlx.DB, name string, files ...MigrationFile) ([]string, error) {
 	if err := createMT(db); err != nil {
 		return nil, err
 	} else if migrated, err := getRunnedScript(db); err != nil {
 		return nil, err
 	} else {
-		migrations := migrations.Filter(name)
+		migrations := MigrationFiles(files).Filter(name)
 		res := make([]string, 0)
 		for _, migration := range migrations {
 			if migration.Name == "" {
 				return nil, errors.New("migration name is empty")
-			} else if migration.In(migrated...) {
+			} else if migration.in(migrated...) {
 				continue
 			} else if scripts, err := readScripts(migration.Content, "script"); err != nil {
 				return nil, err
@@ -114,18 +114,18 @@ func Script(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) 
 // Seed run seed on database
 //
 // pass migration name to run seed on specific migration
-func Seed(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) {
+func Seed(db *sqlx.DB, name string, files ...MigrationFile) ([]string, error) {
 	if err := createMT(db); err != nil {
 		return nil, err
 	} else if seeded, err := getRunnedSeed(db); err != nil {
 		return nil, err
 	} else {
-		migrations := migrations.Filter(name)
+		migrations := MigrationFiles(files).Filter(name)
 		res := make([]string, 0)
 		for _, migration := range migrations {
 			if migration.Name == "" {
 				return nil, errors.New("migration name is empty")
-			} else if migration.In(seeded...) {
+			} else if migration.in(seeded...) {
 				continue
 			} else if scripts, err := readScripts(migration.Content, "seed"); err != nil {
 				return nil, err
@@ -151,19 +151,19 @@ func Seed(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) {
 // Rollback run migration down on database
 //
 // pass migration name to run rollback on specific migration
-func Rollback(db *sqlx.DB, migrations MigrationsT, name string) ([]string, error) {
+func Rollback(db *sqlx.DB, name string, files ...MigrationFile) ([]string, error) {
 	if err := createMT(db); err != nil {
 		return nil, err
 	} else if migrated, err := getRunnedMigrate(db); err != nil {
 		return nil, err
 	} else {
-		migrations := migrations.Filter(name)
+		migrations := MigrationFiles(files).Filter(name)
 		migrations.Reverse()
 		res := make([]string, 0)
 		for _, migration := range migrations {
 			if migration.Name == "" {
 				return nil, errors.New("migration name is empty")
-			} else if !migration.In(migrated...) {
+			} else if !migration.in(migrated...) {
 				continue
 			} else if scripts, err := readScripts(migration.Content, "down"); err != nil {
 				return nil, err
