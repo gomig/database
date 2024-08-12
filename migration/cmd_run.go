@@ -22,21 +22,21 @@ func runCmd(db *sqlx.DB, root string) *cobra.Command {
 		} else {
 			name := flag(cmd, "name")
 			for _, file := range files {
-				fmt.Printf("MIGRATE %s:", file)
+				fmt.Printf("MIGRATE %s: ", file.Name)
 				if res, err := Migrate(db, name, file); err != nil {
 					fmt.Printf("FAIL! %s\n", err.Error())
 				} else if len(res) > 0 {
 					fmt.Printf("OK!\n")
 				}
 
-				fmt.Printf("SCRIPT %s:", file)
+				fmt.Printf("SCRIPT %s: ", file.Name)
 				if res, err := Script(db, name, file); err != nil {
 					fmt.Printf("FAIL! %s\n", err.Error())
 				} else if len(res) > 0 {
 					fmt.Printf("OK!\n")
 				}
 
-				fmt.Printf("SEED %s:", file)
+				fmt.Printf("SEED %s: ", file.Name)
 				if res, err := Seed(db, name, file); err != nil {
 					fmt.Printf("FAIL! %s\n", err.Error())
 				} else if len(res) > 0 {
