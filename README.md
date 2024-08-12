@@ -307,10 +307,10 @@ rootCmd.AddCommand(migration.MigrationCommand(myDB, "./database"))
 
 Each migration script or file can contains 4 main section and defined with `--- [SECTION <name>]` line. Each migration file can contains 4 section:
 
-- **UP:** Scripts on this section will run with `migration migrate` command.
-- **SCRIPT:** Scripts on this section will run with `migration script` command.
-- **SEED:** Scripts on this section will run with `migration seed` command.
-- **DOWN:** Scripts on this section will run with `migration down` command.
+- **UP:** scripts on this section used for create table and define database indexes.
+- **SCRIPT:** scripts on this section used for define procedure, function, triggers and etc.
+- **SEED:** scripts on this section used for seed database.
+- **DOWN:** scripts on this section used for rollback migration, script and seeds on migration file.
 
 **Note:** For writing multiple SQL script in single section you could add `-- [br]` in end of your command.
 
@@ -335,6 +335,15 @@ Show summery of migration executed on database.
 ```bash
 myApp migration summery
 ```
+
+#### run
+
+Run `UP`, `SCRIPT` and `SEED` section scripts at same time.
+
+Flags:
+
+- `-d` or `--dir`: used to define directory of files.
+- `-n` or `--name`: used to run special script only.
 
 #### up
 

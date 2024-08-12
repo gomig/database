@@ -21,11 +21,10 @@ func seedCmd(db *sqlx.DB, root string) *cobra.Command {
 			throw(errors.New("no migration found"))
 		} else {
 			for _, file := range files {
-				fmt.Printf("SEED %s: ", file.Name)
 				if res, err := Script(db, flag(cmd, "name"), file); err != nil {
-					fmt.Printf("FAIL! %s\n", err.Error())
+					fmt.Printf("%s seed failed: %s\n", file.Name, err.Error())
 				} else if len(res) > 0 {
-					fmt.Printf("OK!\n")
+					fmt.Printf("%s seed done\n", file.Name)
 				}
 			}
 		}
