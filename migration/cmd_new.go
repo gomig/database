@@ -1,7 +1,6 @@
 package migration
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -22,13 +21,15 @@ func newCMD(root string) *cobra.Command {
 		// Make directory
 		base := uri(root, flag(cmd, "dir"))
 		if err := deepMK(base); err != nil {
-			throw(err)
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
+			return
 		}
 
 		// Generate name
 		var name string
 		if slug := utils.Slugify(args[0]); slug == "" {
-			throw(errors.New("invalid migration file name"))
+			Formatter("{r}FAIL!{R} invalid migration file name\n")
+			return
 		} else {
 			name = fmt.Sprintf(
 				"%s-%s.sql",
@@ -56,9 +57,9 @@ func newCMD(root string) *cobra.Command {
 			[]byte(content),
 			0644,
 		); err != nil {
-			throw(err)
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
 		} else {
-			fmt.Printf("%s migration file created\n", uri(base, name))
+			Formatter("{m}{I}%s{R}: {g}CREATED!{R}\n", uri(base, name))
 		}
 	}
 	return cmd

@@ -15,35 +15,39 @@ func summeryCmd(db *sqlx.DB) *cobra.Command {
 		fmt.Println("Migration Summery:")
 
 		if err := createMT(db); err != nil {
-			throw(err)
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
+			return
 		}
 
 		if records, err := getRunnedMigrate(db); err != nil {
-			throw(err)
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
+			return
 		} else {
-			fmt.Printf("Executed Migration (%d):\n", len(records))
+			Formatter("{m}{I}Executed Migration{R}: {b}{B}(%d){R}\n", len(records))
 			for _, rec := range records {
-				fmt.Println(rec)
+				fmt.Printf("\t%s", rec)
 			}
 			fmt.Println()
 		}
 
 		if records, err := getRunnedScript(db); err != nil {
-			throw(err)
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
+			return
 		} else {
-			fmt.Printf("Executed Script (%d):\n", len(records))
+			Formatter("{m}{I}Executed Script{R}: {b}{B}(%d){R}\n", len(records))
 			for _, rec := range records {
-				fmt.Println(rec)
+				fmt.Printf("\t%s", rec)
 			}
 			fmt.Println()
 		}
 
 		if records, err := getRunnedSeed(db); err != nil {
-			throw(err)
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
+			return
 		} else {
-			fmt.Printf("Executed Seed (%d):\n", len(records))
+			Formatter("{m}{I}Executed Seed{R}: {b}{B}(%d){R}\n", len(records))
 			for _, rec := range records {
-				fmt.Println(rec)
+				fmt.Printf("\t%s", rec)
 			}
 			fmt.Println()
 		}

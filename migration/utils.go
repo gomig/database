@@ -13,17 +13,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// throw print error and exit app
-func throw(err error) {
-	fmt.Printf("failed: %s\n", err.Error())
-	os.Exit(1)
-}
-
-// flag get string flag or throw error
+// flag get string flag or return empty string
 func flag(cmd *cobra.Command, name string) string {
-	if v, err := cmd.Flags().GetString(name); err != nil {
-		throw(err)
-	} else {
+	if v, err := cmd.Flags().GetString(name); err == nil {
 		return v
 	}
 	return ""

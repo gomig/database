@@ -1,9 +1,6 @@
 package migration
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
@@ -16,15 +13,15 @@ func seedCmd(db *sqlx.DB, root string) *cobra.Command {
 	cmd.Flags().StringP("dir", "d", "", "directory path")
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if files, err := ReadDirectory(uri(root, flag(cmd, "dir"))); err != nil {
-			throw(err)
-		} else if len(files) == 0 {
-			throw(errors.New("no migration found"))
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
+		} else if files.Len() == 0 {
+			Formatter("{m}{I}no migration found{R}\n")
 		} else {
 			for _, file := range files {
 				if res, err := Script(db, flag(cmd, "name"), file); err != nil {
-					fmt.Printf("%s [SEED] failed!\n\t%s\n", file.Name, err.Error())
+					Formatter("{m}{I}%s{R} seed: {r}FAIL!{R} %s\n", file.Name, err.Error())
 				} else if len(res) > 0 {
-					fmt.Printf("%s [SEED] ok!\n", file.Name)
+					Formatter("{m}{I}%s{R} seed: {g}OK!{R}\n", file.Name)
 				}
 			}
 		}
