@@ -21,12 +21,18 @@ func structQueryColumns(v any) []string {
 		res := make([]string, 0)
 		typ := reflect.TypeOf(v)
 		for i := 0; i < typ.NumField(); i++ {
-			if q, ok := typ.Field(i).Tag.Lookup("q"); ok {
-				if q != "-" && q != "" {
-					res = append(res, q)
+			if typ.Field(i).IsExported() {
+				if typ.Field(i).Anonymous {
+					res = append(res, structQueryColumns(val.Field(i).Interface())...)
+				} else {
+					if q, ok := typ.Field(i).Tag.Lookup("q"); ok {
+						if q != "-" && q != "" {
+							res = append(res, q)
+						}
+					} else if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
+						res = append(res, tag)
+					}
 				}
-			} else if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
-				res = append(res, tag)
 			}
 		}
 		return res
@@ -48,8 +54,10 @@ func structColumns(v any) []string {
 		res := make([]string, 0)
 		typ := reflect.TypeOf(v)
 		for i := 0; i < typ.NumField(); i++ {
-			if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
-				res = append(res, tag)
+			if typ.Field(i).IsExported() {
+				if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
+					res = append(res, tag)
+				}
 			}
 		}
 		return res
@@ -71,8 +79,10 @@ func structValues(v any) []any {
 		res := make([]any, 0)
 		typ := reflect.TypeOf(v)
 		for i := 0; i < typ.NumField(); i++ {
-			if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
-				res = append(res, val.Field(i).Interface())
+			if typ.Field(i).IsExported() {
+				if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
+					res = append(res, val.Field(i).Interface())
+				}
 			}
 		}
 		return res

@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// ResolveQuery get list of fields from struct `q` and `db` tag and replace with `SELECT ...;` keyword in query
+// ResolveQuery get list of fields from struct `q` and `db` tag and replace with `SELECT @fields;` keyword in query
 func ResolveQuery[T any](query string, driver Driver) string {
 	var sample T
-	if strings.Contains(strings.ToLower(query), "select ...") {
-		query = strings.Replace(query, "...", strings.Join(structQueryColumns(sample), ","), 1)
+	if strings.Contains(strings.ToLower(query), "@fields") {
+		query = strings.Replace(query, "@fields", strings.Join(structQueryColumns(sample), ","), 1)
 	}
 
 	if driver == DriverPostgres {
