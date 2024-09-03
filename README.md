@@ -44,23 +44,62 @@ Set of generic functions to work with database. For reading from database `Find`
 
 ```go
 type User struct{
-    Id    string `db:"id"`
-    Name  string `db:"name"`
+    Id    string `q:"u.id as id" db:"id"`
+    Name  string `q:"-" db:"name"` // ignore to query manually
     Owner *string `q:"owners.name as owner" db:"owner"` // must used for custom field
 }
 
-users, err := database.Find[User](db, `SELECT @fields FROM users LEFT JOIN owners ON users.owner_id = owners.id`, nil)
+users, err := database.Find[User](
+    db,
+    `SELECT @name, @fields FROM users u
+    LEFT JOIN owners ON u.owner_id = owners.id
+    WHERE u.name = ?;`,
+    WithArgs[User]("John"),
+    WithPlaceholder[User]("@name", "u.name as name"),
+    )
 // this function generate following query string:
-// SELECT id, name, owners.name as owner FROM users LEFT JOIN owners ON users.owner_id = owners.id
+// SELECT u.name as name, u.id as id, owners.name as owner FROM users u LEFT JOIN owners ON u.owner_id = owners.id WHERE u.name = ?;
 ```
+
+### Repository Options
+
+Repository functions accept following options:
+
+#### WithDriver
+
+This option used to define database driver (Postgres by default).
+
+#### WithTable
+
+This option used to define table in `insert` and `update` commands.
+
+**Cation:** Required on `Insert` and `Update` repository method.
+
+#### WithArgs
+
+This option used to pass arguments to sql command.
+
+**Note:** Not called with `Insert` repository method.
+
+#### WithPlaceholder
+
+This option used to define new placeholders in query.
+
+**Note:** Not called with `Insert` and `Update` repository method.
+
+#### WithResolver
+
+This option used to define resolver function. resolver function only calls on `SELECT` command.
+
+**Note:** Only called with `Find` and `FindOne` repository method.
 
 ### Find
 
-Read query results to struct slice. You can use `resolver` callback to manipulate record after read from database.
+Read query results to struct slice. You can use `WithResolver` callback option to manipulate record after read from database.
 
 ```go
 // Signature:
-func Find[T any](db *sqlx.DB, driver database.Driver, query string, resolver func(*T), args ...any) ([]T, error)
+func Find[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) ([]T, error)
 ```
 
 ### FindOne
@@ -69,7 +108,7 @@ Read single result or return nil if not exists.
 
 ```go
 // Signature:
-func FindOne[T any](db *sqlx.DB, driver database.Driver, query string, resolver func(*T), args ...any) (*T, error);
+func FindOne[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (*T, error)
 ```
 
 ### Count
@@ -78,7 +117,7 @@ Get count of documents.
 
 ```go
 // Signature:
-func Count(db *sqlx.DB, driver database.Driver, query string, args ...any) (int64, error);
+func Count[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (int64, error)
 ```
 
 ### Insert
@@ -87,16 +126,7 @@ Insert struct to database. This function use `db` tag to map struct field to dat
 
 ```go
 // Signature:
-func Insert(db *sqlx.DB, entity any, table string, driver database.Driver) (sql.Result, error);
-```
-
-### InsertTx
-
-Insert struct to database using transaction. This function use `db` tag to map struct field to database column.
-
-```go
-// Signature:
-func InsertTx(tx *sql.Tx, entity any, table string, driver database.Driver) (sql.Result, error);
+func Insert[T any](db *sqlx.Db | *sqlx.Tx, entity T, options ...RepositoryOpt[T]) (sql.Result, error)
 ```
 
 ### Update
@@ -105,16 +135,7 @@ Update struct in database. This function use `db` tag to map struct field to dat
 
 ```go
 // Signature:
-func Update(db *sqlx.DB, entity any, table string, driver database.Driver, condition string, args ...any) (sql.Result, error)
-```
-
-### UpdateTx
-
-Update struct in database using transaction. This function use `db` tag to map struct field to database column.
-
-```go
-// Signature:
-func UpdateTx(tx *sql.Tx, entity any, table string, driver database.Driver, condition string, args ...any) (sql.Result, error)
+func Update[T any](db *sqlx.Db | *sqlx.Tx, entity T, condition string, options ...RepositoryOpt[T]) (sql.Result, error) {
 ```
 
 ## Query Builder
