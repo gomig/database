@@ -5,39 +5,69 @@ import (
 	"strings"
 )
 
-// types
-type RepositoryOpt[T any] func(*Option[T])
-type Resolver[T any] func(*T) error
-type Option[T any] struct {
-	driver    Driver
-	table     string
-	args      []any
-	oldNew    []string
-	resolvers []Resolver[T]
-}
+// Types
 type Executable interface {
 	Exec(string, ...any) (sql.Result, error)
 }
 
-// newOption generate new option with defaults
-func newOption[T any](opts ...RepositoryOpt[T]) *Option[T] {
-	opt := new(Option[T])
-	opt.args = []any{}
-	opt.oldNew = []string{}
-	opt.resolvers = []Resolver[T]{}
-	opt.driver = DriverPostgres
-	for _, o := range opts {
-		o(opt)
-	}
-	return opt
+type Resolver[T any] func(*T) error
+
+type RepoOption[T any] struct {
+	driver    Driver
+	args      []any
+	oldNew    []string
+	resolvers []Resolver[T]
 }
 
 // Methods
+// NewOption generate new options with default parameters
+func NewOption[T any]() *RepoOption[T] {
+	opt := new(RepoOption[T])
+	opt.driver = DriverPostgres
+	opt.args = []any{}
+	opt.oldNew = []string{}
+	opt.resolvers = []Resolver[T]{}
+	return opt
+}
+
+// WithDriver set database driver (default Postgres)
+func (opt *RepoOption[T]) WithDriver(driver Driver) *RepoOption[T] {
+	opt.driver = driver
+	return opt
+}
+
+// WithArgs add args to query
+func (opt *RepoOption[T]) WithArgs(args ...any) *RepoOption[T] {
+	opt.args = append(opt.args, args...)
+	return opt
+}
+
+// WithPlaceholder add placeholder for query to replace before execute
+func (opt *RepoOption[T]) WithPlaceholder(oldNew ...string) *RepoOption[T] {
+	opt.oldNew = append(opt.oldNew, oldNew...)
+	return opt
+}
+
+// WithResolver add resolver to query
+func (opt *RepoOption[T]) WithResolver(resolver Resolver[T]) *RepoOption[T] {
+	opt.resolvers = append(opt.resolvers, resolver)
+	return opt
+}
+
+// resolveOptions get first option or return default one
+func resolveOptions[T any](options ...RepoOption[T]) *RepoOption[T] {
+	if len(options) > 0 {
+		return &options[0]
+	} else {
+		return NewOption[T]()
+	}
+}
+
 // resolveQ normalize query for select sql commands
-func (opt Option[T]) resolveQ(query string) string {
+func (opt *RepoOption[T]) resolveQ(query string) string {
 	var sample T
 	fields := strings.Join(structQueryColumns(sample), ",")
-	replacer := opt.ReplacerWithFields(fields)
+	replacer := opt.replacerWithFields(fields)
 	query = replacer.Replace(query)
 	if opt.driver == DriverPostgres {
 		query = numericArgs(query, 1)
@@ -46,8 +76,8 @@ func (opt Option[T]) resolveQ(query string) string {
 }
 
 // resolve normalize query for non-select sql commands
-func (opt Option[T]) resolve(query string) string {
-	replacer := opt.Replacer()
+func (opt *RepoOption[T]) resolve(query string) string {
+	replacer := opt.replacer()
 	query = replacer.Replace(query)
 	if opt.driver == DriverPostgres {
 		query = numericArgs(query, 1)
@@ -55,49 +85,13 @@ func (opt Option[T]) resolve(query string) string {
 	return query
 }
 
-// Replacer generate new placeholder replacer for query
-func (opt Option[T]) Replacer() *strings.Replacer {
+// replacer generate new placeholder replacer for query
+func (opt *RepoOption[T]) replacer() *strings.Replacer {
 	return strings.NewReplacer(opt.oldNew...)
 }
 
-// Replacer generate new placeholder replacer for query with @fields list
-func (opt Option[T]) ReplacerWithFields(fields string) *strings.Replacer {
+// replacerWithFields generate new placeholder replacer for query with @fields list
+func (opt *RepoOption[T]) replacerWithFields(fields string) *strings.Replacer {
 	opt.oldNew = append(opt.oldNew, "@fields", fields)
 	return strings.NewReplacer(opt.oldNew...)
-}
-
-// Options
-// WithDriver is a functional option to set database driver
-func WithDriver[T any](driver Driver) RepositoryOpt[T] {
-	return func(opt *Option[T]) {
-		opt.driver = driver
-	}
-}
-
-// WithTable is a functional option to set database table for insert and update query
-func WithTable[T any](table string) RepositoryOpt[T] {
-	return func(opt *Option[T]) {
-		opt.table = table
-	}
-}
-
-// WithArgs is a functional option to pass args to query
-func WithArgs[T any](args ...any) RepositoryOpt[T] {
-	return func(opt *Option[T]) {
-		opt.args = append(opt.args, args...)
-	}
-}
-
-// WithPlaceholder is a functional option to fill query placeholders
-func WithPlaceholder[T any](oldNew ...string) RepositoryOpt[T] {
-	return func(opt *Option[T]) {
-		opt.oldNew = append(opt.oldNew, oldNew...)
-	}
-}
-
-// WithResolver is a functional option to add resolver to query
-func WithResolver[T any](resolver ...Resolver[T]) RepositoryOpt[T] {
-	return func(opt *Option[T]) {
-		opt.resolvers = append(opt.resolvers, resolver...)
-	}
 }

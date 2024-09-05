@@ -10,8 +10,8 @@ import (
 //
 // You can pass resolver to manipulate record after read
 // you can use `q` struct for advanced field select query
-func Find[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) ([]T, error) {
-	option := newOption(options...)
+func Find[T any](db *sqlx.DB, query string, options ...RepoOption[T]) ([]T, error) {
+	option := resolveOptions(options...)
 	if rows, err := db.Queryx(option.resolveQ(query), option.args...); err == sql.ErrNoRows {
 		return []T{}, nil
 	} else if err != nil {
@@ -46,9 +46,9 @@ func Find[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) ([]T, e
 //
 // You can pass resolver to manipulate record after read
 // you can use `q` or `db` struct tag to map field to database column
-func FindOne[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (*T, error) {
+func FindOne[T any](db *sqlx.DB, query string, options ...RepoOption[T]) (*T, error) {
+	option := resolveOptions(options...)
 	// handle options
-	option := newOption(options...)
 	record := new(T)
 	if err := db.Get(record, option.resolveQ(query), option.args...); err == sql.ErrNoRows {
 		return nil, nil
@@ -72,9 +72,9 @@ func FindOne[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (*T,
 }
 
 // Count get count of records
-func Count[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (int64, error) {
+func Count[T any](db *sqlx.DB, query string, options ...RepoOption[T]) (int64, error) {
+	option := resolveOptions(options...)
 	// handle options
-	option := newOption(options...)
 	var count int64
 	if err := db.Get(&count, option.resolve(query), option.args...); err != nil {
 		return 0, err
@@ -84,15 +84,15 @@ func Count[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (int64
 }
 
 // Insert struct to database
-func Insert[T any](db Executable, entity T, options ...RepositoryOpt[T]) (sql.Result, error) {
-	option := newOption(options...)
-	cmd, args := ResolveInsert(entity, option.table, option.driver)
+func Insert[T any](db Executable, entity T, table string, options ...RepoOption[T]) (sql.Result, error) {
+	option := resolveOptions(options...)
+	cmd, args := ResolveInsert(entity, table, option.driver)
 	return db.Exec(cmd, args...)
 }
 
 // Update update struct in database
-func Update[T any](db Executable, entity T, condition string, options ...RepositoryOpt[T]) (sql.Result, error) {
-	option := newOption(options...)
-	cmd, args := ResolveUpdate(entity, option.table, option.driver, condition, option.args...)
+func Update[T any](db Executable, entity T, table string, condition string, options ...RepoOption[T]) (sql.Result, error) {
+	option := resolveOptions(options...)
+	cmd, args := ResolveUpdate(entity, table, option.driver, condition, option.args...)
 	return db.Exec(cmd, args...)
 }

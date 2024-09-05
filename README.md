@@ -65,33 +65,26 @@ users, err := database.Find[User](
 
 Repository functions accept following options:
 
-#### WithDriver
-
-This option used to define database driver (Postgres by default).
-
-#### WithTable
-
-This option used to define table in `insert` and `update` commands.
-
-**Cation:** Required on `Insert` and `Update` repository method.
-
-#### WithArgs
-
-This option used to pass arguments to sql command.
-
-**Note:** Not called with `Insert` repository method.
-
-#### WithPlaceholder
-
-This option used to define new placeholders in query.
-
-**Note:** Not called with `Insert` and `Update` repository method.
-
-#### WithResolver
-
-This option used to define resolver function. resolver function only calls on `SELECT` command.
-
-**Note:** Only called with `Find` and `FindOne` repository method.
+```go
+    var options := database.NewOption[int]().
+        WithDriver(database.DriverMySQL). // define database driver (Postgres by default)
+        WithArgs(1, 2, "john"). // pass arguments to sql command (Not called with Insert)
+        WithPlaceholder("@userFields", "id, name, tel"). // define new placeholders in query (Not called with Insert and Update)
+        WithResolver(func(i *int) error { // register resolver function (resolvers only called by Find and FindOne)
+            if i != nil {
+                *i = *i * 2
+            }
+            return nil
+        }).
+        WithResolver(func(i *int) error {
+            if i != nil {
+                if *i%2 != 0 {
+                    *i = *i - 1
+                }
+            }
+            return nil
+        })
+```
 
 ### Find
 
