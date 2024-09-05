@@ -5,66 +5,72 @@ import (
 	"strings"
 )
 
-// Types
 type Executable interface {
 	Exec(string, ...any) (sql.Result, error)
 }
 
 type Resolver[T any] func(*T) error
 
-type RepoOption[T any] struct {
-	driver    Driver
-	args      []any
-	oldNew    []string
-	resolvers []Resolver[T]
+type Option[T any] interface {
+	WithDriver(Driver) Option[T]
+	WithArgs(...any) Option[T]
+	WithPlaceholder(...string) Option[T]
+	WithResolver(Resolver[T]) Option[T]
+
+	getDriver() Driver
+	getArgs() []any
+	getResolvers() []Resolver[T]
+
+	resolveQuery(string) string
+	resolve(string) string
+	replacer() *strings.Replacer
+	replacerWithFields(string) *strings.Replacer
 }
 
-// Methods
-// NewOption generate new options with default parameters
-func NewOption[T any]() *RepoOption[T] {
-	opt := new(RepoOption[T])
-	opt.driver = DriverPostgres
-	opt.args = []any{}
-	opt.oldNew = []string{}
-	opt.resolvers = []Resolver[T]{}
-	return opt
+type optionDriver[T any] struct {
+	driver       Driver
+	args         []any
+	placeholders []string
+	resolvers    []Resolver[T]
 }
 
 // WithDriver set database driver (default Postgres)
-func (opt *RepoOption[T]) WithDriver(driver Driver) *RepoOption[T] {
+func (opt *optionDriver[T]) WithDriver(driver Driver) Option[T] {
 	opt.driver = driver
 	return opt
 }
 
 // WithArgs add args to query
-func (opt *RepoOption[T]) WithArgs(args ...any) *RepoOption[T] {
+func (opt *optionDriver[T]) WithArgs(args ...any) Option[T] {
 	opt.args = append(opt.args, args...)
 	return opt
 }
 
 // WithPlaceholder add placeholder for query to replace before execute
-func (opt *RepoOption[T]) WithPlaceholder(oldNew ...string) *RepoOption[T] {
-	opt.oldNew = append(opt.oldNew, oldNew...)
+func (opt *optionDriver[T]) WithPlaceholder(oldNew ...string) Option[T] {
+	opt.placeholders = append(opt.placeholders, oldNew...)
 	return opt
 }
 
 // WithResolver add resolver to query
-func (opt *RepoOption[T]) WithResolver(resolver Resolver[T]) *RepoOption[T] {
+func (opt *optionDriver[T]) WithResolver(resolver Resolver[T]) Option[T] {
 	opt.resolvers = append(opt.resolvers, resolver)
 	return opt
 }
 
-// resolveOptions get first option or return default one
-func resolveOptions[T any](options ...RepoOption[T]) *RepoOption[T] {
-	if len(options) > 0 {
-		return &options[0]
-	} else {
-		return NewOption[T]()
-	}
+func (opt *optionDriver[T]) getDriver() Driver {
+	return opt.driver
 }
 
-// resolveQ normalize query for select sql commands
-func (opt *RepoOption[T]) resolveQ(query string) string {
+func (opt *optionDriver[T]) getArgs() []any {
+	return opt.args
+}
+
+func (opt *optionDriver[T]) getResolvers() []Resolver[T] {
+	return opt.resolvers
+}
+
+func (opt *optionDriver[T]) resolveQuery(query string) string {
 	var sample T
 	fields := strings.Join(structQueryColumns(sample), ",")
 	replacer := opt.replacerWithFields(fields)
@@ -75,8 +81,7 @@ func (opt *RepoOption[T]) resolveQ(query string) string {
 	return query
 }
 
-// resolve normalize query for non-select sql commands
-func (opt *RepoOption[T]) resolve(query string) string {
+func (opt *optionDriver[T]) resolve(query string) string {
 	replacer := opt.replacer()
 	query = replacer.Replace(query)
 	if opt.driver == DriverPostgres {
@@ -85,13 +90,29 @@ func (opt *RepoOption[T]) resolve(query string) string {
 	return query
 }
 
-// replacer generate new placeholder replacer for query
-func (opt *RepoOption[T]) replacer() *strings.Replacer {
-	return strings.NewReplacer(opt.oldNew...)
+func (opt *optionDriver[T]) replacer() *strings.Replacer {
+	return strings.NewReplacer(opt.placeholders...)
 }
 
-// replacerWithFields generate new placeholder replacer for query with @fields list
-func (opt *RepoOption[T]) replacerWithFields(fields string) *strings.Replacer {
-	opt.oldNew = append(opt.oldNew, "@fields", fields)
-	return strings.NewReplacer(opt.oldNew...)
+func (opt *optionDriver[T]) replacerWithFields(fields string) *strings.Replacer {
+	opt.placeholders = append(opt.placeholders, "@fields", fields)
+	return strings.NewReplacer(opt.placeholders...)
+}
+
+// NewOption generate new options with default parameters
+func NewOption[T any]() Option[T] {
+	opt := new(optionDriver[T])
+	opt.driver = DriverPostgres
+	opt.args = []any{}
+	opt.placeholders = []string{}
+	opt.resolvers = []Resolver[T]{}
+	return opt
+}
+
+func resolveOptions[T any](options ...Option[T]) Option[T] {
+	if len(options) > 0 {
+		return options[0]
+	} else {
+		return NewOption[T]()
+	}
 }
