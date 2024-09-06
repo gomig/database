@@ -54,8 +54,7 @@ users, err := database.Find[User](
     `SELECT @name, @fields FROM users u
     LEFT JOIN owners ON u.owner_id = owners.id
     WHERE u.name = ?;`,
-    WithArgs[User]("John"),
-    WithPlaceholder[User]("@name", "u.name as name"),
+    "John",
     )
 // this function generate following query string:
 // SELECT u.name as name, u.id as id, owners.name as owner FROM users u LEFT JOIN owners ON u.owner_id = owners.id WHERE u.name = ?;
@@ -63,12 +62,11 @@ users, err := database.Find[User](
 
 ### Repository Options
 
-Repository functions accept following options:
+Repository functions can accept option for advance using with `Opt` suffix. Repository functions accept following options:
 
 ```go
     var options := database.NewOption[int]().
         WithDriver(database.DriverMySQL). // define database driver (Postgres by default)
-        WithArgs(1, 2, "john"). // pass arguments to sql command (Not called with Insert)
         WithPlaceholder("@userFields", "id, name, tel"). // define new placeholders in query (Not called with Insert and Update)
         WithResolver(func(i *int) error { // register resolver function (resolvers only called by Find and FindOne)
             if i != nil {
@@ -92,7 +90,8 @@ Read query results to struct slice. You can use `WithResolver` callback option t
 
 ```go
 // Signature:
-func Find[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) ([]T, error)
+func Find[T any](db *sqlx.DB, query string, args ...any) ([]T, error)
+func FindOpt[T any](db *sqlx.DB, query string, option Option[T], args ...any) ([]T, error)
 ```
 
 ### FindOne
@@ -101,7 +100,8 @@ Read single result or return nil if not exists.
 
 ```go
 // Signature:
-func FindOne[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (*T, error)
+func FindOne[T any](db *sqlx.DB, query string, args ...any) (*T, error)
+func FindOneOpt[T any](db *sqlx.DB, query string, option Option[T], args ...any) (*T, error)
 ```
 
 ### Count
@@ -110,7 +110,8 @@ Get count of documents.
 
 ```go
 // Signature:
-func Count[T any](db *sqlx.DB, query string, options ...RepositoryOpt[T]) (int64, error)
+func Count(db *sqlx.DB, query string, args ...any) (int64, error)
+func CountOpt(db *sqlx.DB, query string, option Option[int64], args ...any) (int64, error)
 ```
 
 ### Insert
@@ -119,7 +120,8 @@ Insert struct to database. This function use `db` tag to map struct field to dat
 
 ```go
 // Signature:
-func Insert[T any](db *sqlx.Db | *sqlx.Tx, entity T, options ...RepositoryOpt[T]) (sql.Result, error)
+func Insert[T any](db Executable, entity T, table string) (sql.Result, error)
+func InsertOpt[T any](db Executable, entity T, table string, option Option[T]) (sql.Result, error)
 ```
 
 ### Update
@@ -128,7 +130,8 @@ Update struct in database. This function use `db` tag to map struct field to dat
 
 ```go
 // Signature:
-func Update[T any](db *sqlx.Db | *sqlx.Tx, entity T, condition string, options ...RepositoryOpt[T]) (sql.Result, error) {
+func Update[T any](db Executable, entity T, table string, condition string, args ...any) (sql.Result, error)
+func UpdateOpt[T any](db Executable, entity T, table string, condition string, option Option[T], args ...any) (sql.Result, error)
 ```
 
 ## Query Builder

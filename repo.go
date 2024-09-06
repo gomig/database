@@ -10,9 +10,8 @@ import (
 //
 // You can pass resolver to manipulate record after read
 // you can use `q` struct for advanced field select query
-func Find[T any](db *sqlx.DB, query string, options ...Option[T]) ([]T, error) {
-	option := resolveOptions(options...)
-	if rows, err := db.Queryx(option.resolveQuery(query), option.getArgs()...); err == sql.ErrNoRows {
+func FindOpt[T any](db *sqlx.DB, query string, option Option[T], args ...any) ([]T, error) {
+	if rows, err := db.Queryx(option.resolveQuery(query), args...); err == sql.ErrNoRows {
 		return []T{}, nil
 	} else if err != nil {
 		return nil, err
@@ -41,16 +40,18 @@ func Find[T any](db *sqlx.DB, query string, options ...Option[T]) ([]T, error) {
 		return res, nil
 	}
 }
+func Find[T any](db *sqlx.DB, query string, args ...any) ([]T, error) {
+	return FindOpt(db, query, NewOption[T](), args...)
+}
 
 // FindOne get single entity
 //
 // You can pass resolver to manipulate record after read
 // you can use `q` or `db` struct tag to map field to database column
-func FindOne[T any](db *sqlx.DB, query string, options ...Option[T]) (*T, error) {
-	option := resolveOptions(options...)
+func FindOneOpt[T any](db *sqlx.DB, query string, option Option[T], args ...any) (*T, error) {
 	// handle options
 	record := new(T)
-	if err := db.Get(record, option.resolveQuery(query), option.getArgs()...); err == sql.ErrNoRows {
+	if err := db.Get(record, option.resolveQuery(query), args...); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -70,29 +71,37 @@ func FindOne[T any](db *sqlx.DB, query string, options ...Option[T]) (*T, error)
 		return record, nil
 	}
 }
+func FindOne[T any](db *sqlx.DB, query string, args ...any) (*T, error) {
+	return FindOneOpt(db, query, NewOption[T](), args...)
+}
 
 // Count get count of records
-func Count[T any](db *sqlx.DB, query string, options ...Option[T]) (int64, error) {
-	option := resolveOptions(options...)
-	// handle options
+func CountOpt(db *sqlx.DB, query string, option Option[int64], args ...any) (int64, error) {
 	var count int64
-	if err := db.Get(&count, option.resolve(query), option.getArgs()...); err != nil {
+	if err := db.Get(&count, option.resolve(query), args...); err != nil {
 		return 0, err
 	} else {
 		return count, nil
 	}
 }
+func Count(db *sqlx.DB, query string, args ...any) (int64, error) {
+	return CountOpt(db, query, NewOption[int64](), args...)
+}
 
 // Insert struct to database
-func Insert[T any](db Executable, entity T, table string, options ...Option[T]) (sql.Result, error) {
-	option := resolveOptions(options...)
+func InsertOpt[T any](db Executable, entity T, table string, option Option[T]) (sql.Result, error) {
 	cmd, args := ResolveInsert(entity, table, option.getDriver())
 	return db.Exec(cmd, args...)
 }
+func Insert[T any](db Executable, entity T, table string) (sql.Result, error) {
+	return InsertOpt(db, entity, table, NewOption[T]())
+}
 
 // Update update struct in database
-func Update[T any](db Executable, entity T, table string, condition string, options ...Option[T]) (sql.Result, error) {
-	option := resolveOptions(options...)
-	cmd, args := ResolveUpdate(entity, table, option.getDriver(), condition, option.getArgs()...)
+func UpdateOpt[T any](db Executable, entity T, table string, condition string, option Option[T], args ...any) (sql.Result, error) {
+	cmd, args := ResolveUpdate(entity, table, option.getDriver(), condition, args...)
 	return db.Exec(cmd, args...)
+}
+func Update[T any](db Executable, entity T, table string, condition string, args ...any) (sql.Result, error) {
+	return UpdateOpt(db, entity, table, condition, NewOption[T](), args...)
 }

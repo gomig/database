@@ -13,12 +13,10 @@ type Resolver[T any] func(*T) error
 
 type Option[T any] interface {
 	WithDriver(Driver) Option[T]
-	WithArgs(...any) Option[T]
 	WithPlaceholder(...string) Option[T]
 	WithResolver(Resolver[T]) Option[T]
 
 	getDriver() Driver
-	getArgs() []any
 	getResolvers() []Resolver[T]
 
 	resolveQuery(string) string
@@ -29,7 +27,6 @@ type Option[T any] interface {
 
 type optionDriver[T any] struct {
 	driver       Driver
-	args         []any
 	placeholders []string
 	resolvers    []Resolver[T]
 }
@@ -37,12 +34,6 @@ type optionDriver[T any] struct {
 // WithDriver set database driver (default Postgres)
 func (opt *optionDriver[T]) WithDriver(driver Driver) Option[T] {
 	opt.driver = driver
-	return opt
-}
-
-// WithArgs add args to query
-func (opt *optionDriver[T]) WithArgs(args ...any) Option[T] {
-	opt.args = append(opt.args, args...)
 	return opt
 }
 
@@ -60,10 +51,6 @@ func (opt *optionDriver[T]) WithResolver(resolver Resolver[T]) Option[T] {
 
 func (opt *optionDriver[T]) getDriver() Driver {
 	return opt.driver
-}
-
-func (opt *optionDriver[T]) getArgs() []any {
-	return opt.args
 }
 
 func (opt *optionDriver[T]) getResolvers() []Resolver[T] {
@@ -103,16 +90,7 @@ func (opt *optionDriver[T]) replacerWithFields(fields string) *strings.Replacer 
 func NewOption[T any]() Option[T] {
 	opt := new(optionDriver[T])
 	opt.driver = DriverPostgres
-	opt.args = []any{}
 	opt.placeholders = []string{}
 	opt.resolvers = []Resolver[T]{}
 	return opt
-}
-
-func resolveOptions[T any](options ...Option[T]) Option[T] {
-	if len(options) > 0 {
-		return options[0]
-	} else {
-		return NewOption[T]()
-	}
 }
