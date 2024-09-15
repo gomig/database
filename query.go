@@ -25,19 +25,27 @@ type QueryBuilder interface {
 	OrClosure(cond string, args ...any) QueryBuilder
 	// OrClosureIf add new AndClosure condition if first parameter is true
 	OrClosureIf(ifCond bool, cond string, args ...any) QueryBuilder
-	// ToSQL generate query with placeholder based on counter
-	ToSQL(counter int) string
-	// ToString generate query string with
-	// This method replace @q with query to sql
-	ToString(pattern string, counter int, params ...any) string
+	// RawPostgres get raw generated query for postgres
+	RawPostgres(counter int) string
+	// RawSQL get raw generated query for mysql
+	RawSQL() string
+	// ToPostgres generate query string for postgres with numeric arguments based on counter
+	// this method replace @query with Raw() value
+	// this method replace @where with `WHERE Raw()` method
+	// you can use @[key], value to replacement in query string
+	ToPostgres(query string, counter int, replacements ...string) string
+	// ToSQL generate query string for sql with ? arguments
+	// this method replace @query with Raw() value
+	// this method replace @where with `WHERE Raw()` method
+	// you can use @[key], value to replacement in query string
+	ToSQL(query string, replacements ...string) string
 	// Params get list of query parameters
 	Params() []any
 }
 
 // NewQuery generate new query builder
-func NewQuery(driver Driver) QueryBuilder {
+func NewQuery() QueryBuilder {
 	res := new(qBuilder)
-	res.driver = driver
 	res.queries = make([]Query, 0)
 	return res
 }

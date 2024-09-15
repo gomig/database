@@ -8,7 +8,6 @@ import (
 // qBuilder query manager
 type qBuilder struct {
 	queries []Query
-	driver  Driver
 }
 
 func (q *qBuilder) And(cond string, args ...any) QueryBuilder {
@@ -91,7 +90,7 @@ func (q *qBuilder) OrClosureIf(ifCond bool, cond string, args ...any) QueryBuild
 	}
 }
 
-func (q qBuilder) ToSQL(counter int) string {
+func (q qBuilder) sql() string {
 	command := ""
 	for _, q := range q.queries {
 		query := q.Query
@@ -108,19 +107,42 @@ func (q qBuilder) ToSQL(counter int) string {
 		}
 
 		if command == "" {
-			command = fmt.Sprintf(" %s", query)
+			command = query
 		} else {
 			command = fmt.Sprintf("%s %s %s", command, q.Type, query)
 		}
 	}
-	if q.driver == DriverPostgres {
-		command = numericArgs(command, counter)
-	}
 	return command
 }
 
-func (q qBuilder) ToString(pattern string, counter int, args ...any) string {
-	return fmt.Sprintf(strings.Replace(pattern, "@q", q.ToSQL(counter), 1), args...)
+func (q qBuilder) RawPostgres(counter int) string {
+	return numericArgs(q.sql(), counter)
+}
+
+func (q qBuilder) RawSQL() string {
+	return q.sql()
+}
+
+func (q qBuilder) ToPostgres(query string, counter int, replacements ...string) string {
+	replacer := strings.NewReplacer(
+		append(
+			replacements,
+			"@where", "WHERE "+q.RawPostgres(counter),
+			"@query", q.RawPostgres(counter),
+		)...,
+	)
+	return replacer.Replace(query)
+}
+
+func (q qBuilder) ToSQL(query string, replacements ...string) string {
+	replacer := strings.NewReplacer(
+		append(
+			replacements,
+			"@where", "WHERE "+q.sql(),
+			"@query", q.sql(),
+		)...,
+	)
+	return replacer.Replace(query)
 }
 
 func (q qBuilder) Params() []any {

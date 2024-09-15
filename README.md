@@ -138,18 +138,22 @@ func UpdateOpt[T any](db Executable, entity T, table string, condition string, o
 
 Make complex query use for sql `WHERE` command.
 
-**Note:** You can use special `@in` keyword in your query and query builder make a `IN(param1, param2)` query for you.
+**Note:** You can use special `@in` keyword in your query to make a `IN(param1, param2)` query for you.
+
+**Note:** In postgres related methods you must passed counter to replace `?` placeholder with counter value.
 
 ```go
 import "github.com/gomig/database/v2"
 import "fmt"
 
-query := database.NewQuery(database.DriverPostgres).
+query := database.NewQuery().
     And("firstname LIKE '%?%'", "John").
     AndIf(myConditionPassed, "role @in", "admin", "support", "user").
     OrClosure("age > ? AND age < ?", 15, 30)
-fmt.Print(query.ToSQL(1)) // " firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6)"
-fmt.Print(query.Params()) // [John admin support user 15 30]
+raw := query.RawSQL() // "firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6)"
+query1 := query.ToPostgres(`SELECT * FROM users @where ORDER BY @sort @order;`, 1, "@sort", "name", "@order", "asc") // "SELECT * FROM users WHERE firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6) ORDER BY name asc;"
+query2 := query.ToSQL(`SELECT * FROM users WHERE @query`) // "SELECT * FROM users WHERE firstname LIKE '%?%' AND role IN (?,?,?) OR (age > ? AND age < ?);"
+params := query.Params() // [John admin support user 15 30]
 ```
 
 ### And
@@ -224,30 +228,40 @@ Add new AndClosure condition if first parameter is true.
 OrClosureIf(ifCond bool, cond string, args ...any) QueryBuilder
 ```
 
-### ToSQL
+### RawPostgres
 
-Generate query with placeholder based on counter.
+Get raw generated query for postgres.
 
 ```go
 // Signature:
-ToSQL(counter int) string
+RawPostgres(counter int) string
 ```
 
-### ToString
+### RawSQL
 
-Generate query string and replace `@q` with `ToSQL()`.
+Get raw generated query for mysql.
 
 ```go
 // Signature:
-ToString(pattern string, counter int, params ...any) string
+RawSQL() string
+```
 
-// example
-import "github.com/gomig/database/v2"
-query := database.NewQuery(database.DriverPostgres).
-                And("name = ?", "John Doe").
-                And("id = ?", 3)
-sql := query.ToString("SELECT * FROM users WHERE @q ORDER BY %s %s;", 1, "name", "asc");
-// SELECT * FROM users WHERE name = $1 AND id = $2 ORDER BY name asc;
+### ToPostgres
+
+Generate query string for postgres with numeric arguments based on counter. this method replace `@query` with `Raw()` and `@where` with `WHERE Raw()` value. You can define your own `@placeholder` and pass as `replacements` argument to replace in query before generate sql.
+
+```go
+// Signature:
+ToPostgres(query string, counter int, replacements ...string) string
+```
+
+### ToSQL
+
+Generate query string for sql with ? arguments. this method replace `@query` with `Raw()` and `@where` with `WHERE Raw()` value. You can define your own `@placeholder` and pass as `replacements` argument to replace in query before generate sql.
+
+```go
+// Signature:
+ToSQL(query string, replacements ...string) string
 ```
 
 ### Params
