@@ -32,246 +32,252 @@ db, err := database.NewPostgresConnector("localhost", "", "postgres", "", "")
 
 ## Repository
 
-Set of generic functions to work with database. For reading from database `Find` and `FindOne` function use `q` and `db` fields to map struct field to database column.
+Set of generic functions to work with database.
+
+**Note:** You must use `?` as placeholder. Repository functions will transform placeholder automatically to `$1, $2` for numeric args mode.
+
+**Note:** SQL placeholders cast as numeric `$1, $2` by default. You can change this behavior with `NumericArgs(false)` method.
+
+**Note:** You can use replace phrase in your query string using `@some` in your query and replace with dynamic value for cleaner code.
+
+### Commander
+
+Normalize sql placeholder and execute.
+
+```go
+import "github.com/gomig/database/v2"
+
+// -> UPDATE users SET name = $1 WHERE id = $2;
+result, err := database.NewCMD(myDatabase).
+    Command(`UPDATE users SET name = ? WHERE @cond;`).
+    Replace("@cond", "id = ?").
+    Exec("John Doe", 8921)
+```
+
+**NumericArgs** specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder.
+
+**Command** set sql command **(Required)**.
+
+**Replace** replace phrase in query string before run.
+
+**Exec** normalize command and exec.
+
+### Counter
+
+Count records.
+
+```go
+import "github.com/gomig/database/v2"
+
+// -> SELECT COUNT(id) FROM users WHERE name ILIKE '%$1%';
+count, err := database.NewCounter(myTx).
+    Query(`SELECT COUNT(id) FROM users WHERE @cond;`).
+    Replace("@cond", "name ILIKE '%?%'").
+    Result("John")
+```
+
+**NumericArgs** specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder.
+
+**Query** set sql query **(Required)**.
+
+**Replace** replace phrase in query string before run.
+
+**Result** get count, returns -1 on error.
+
+### Finder
+
+Find single or multiple record.
+
+Finder use `q` and `db` struct tag to map struct field to database column. If q or db struct tag set to `"-"` field will ignored.
 
 **Note:** `q` struct tag used to advanced field name in query.
 
-**Note:** You must use `?` as placeholder. Repository functions will transform placeholder automatically to `$1, $2` for postgres driver.
-
-**Note:** You can implement `Decoder` interface to call struct `Decode() error` method after read by `Find` and `FindOne` functions.
+**Note:** You can implement `Decoder` interface in your struct to manipulate record after read. You could register extra resolver on Finder.
 
 **Note:** You can auto fill select columns from struct by `@fields` placeholder in sql select statement. e.g. `SELECT @fields FROM users`.
 
 ```go
 type User struct{
-    Id    string `q:"u.id as id" db:"id"`
-    Name  string `q:"-" db:"name"` // ignore to query manually
-    Owner *string `q:"owners.name as owner" db:"owner"` // must used for custom field
+    Id      int `db:"id"`
+    Name    string `db:"name"`
+    Address string `q:"addresses.address AS address" db:"address"`
+}
+```
+
+```go
+import (
+    "time"
+    "strings"
+    "github.com/gomig/database/v2"
+)
+
+type User struct{
+    Id      int     `db:"id"`
+    Name    string  `db:"name"`
+    QueryAt time.Time `q:"-" db:"query_at"` // ignore from auto fill and select manually
 }
 
-users, err := database.Find[User](
-    db,
-    `SELECT @name, @fields FROM users u
-    LEFT JOIN owners ON u.owner_id = owners.id
-    WHERE u.name = ?;`,
-    "John",
-    )
-// this function generate following query string:
-// SELECT u.name as name, u.id as id, owners.name as owner FROM users u LEFT JOIN owners ON u.owner_id = owners.id WHERE u.name = ?;
+// -> SELECT id, name, NOW() AS query_at FROM users WHERE id = $1;
+single, err := database.NewFinder[User](db).
+    Query(`SELECT @fields, NOW() AS query_at FROM users WHERE id = ?;`).
+    Resolve(func(user *User) error {
+        user.Name = strings.ToUpper(user.Name)
+        return nil
+    }).
+    Single(3)
+
+
+// -> SELECT id, name, NOW() AS query_at FROM users;
+all, err := database.NewFinder[User](db).
+    Query(`SELECT @fields, @queryAt FROM users;`).
+    Replace("@queryAt", "NOW() AS query_at").
+    Resolve(func(user *User) error {
+        user.Name = strings.ToUpper(user.Name)
+        return nil
+    }).
+    Result()
 ```
 
-### Repository Options
+**NumericArgs** specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder
 
-Repository functions can accept option for advance using with `Opt` suffix. Repository functions accept following options:
+**Query** set sql query **(Required)**.
+
+**Replace** replace phrase in query string before run.
+
+**Resolve** reginster new resolver to run on record after read.
+
+**Single** get first result.
+
+**Result** get multiple result.
+
+### Inserter
+
+Insert struct to database. Inserter use `db` struct tag to resolve fields. If field is private or `db` tag is empty or equals `"-"` field ignored.
 
 ```go
-    var options := database.NewOption[int]().
-        WithDriver(database.DriverMySQL). // define database driver (Postgres by default)
-        WithPlaceholder("@userFields", "id, name, tel"). // define new placeholders in query (Not called with Insert and Update)
-        WithResolver(func(i *int) error { // register resolver function (resolvers only called by Find and FindOne)
-            if i != nil {
-                *i = *i * 2
-            }
-            return nil
-        }).
-        WithResolver(func(i *int) error {
-            if i != nil {
-                if *i%2 != 0 {
-                    *i = *i - 1
-                }
-            }
-            return nil
-        })
+import (
+    "strings"
+    "github.com/gomig/database/v2"
+)
+
+type User struct{
+    Id      int     `db:"id"`
+    Name    string  `db:"name"`
+    Temp    string `db:"-"` // not inserted to database
+}
+
+// -> INSERT INTO users (id, name) VALUES(?, ?);
+result, err := database.NewInserter[User](db).
+    NumericArgs(false).
+    Table("users").
+    Insert(User {
+        Id: 6,
+        Name: "Jack Ma",
+    })
 ```
 
-### Find
+**NumericArgs** specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder.
 
-Read query results to struct slice. You can use `WithResolver` callback option to manipulate record after read from database.
+**Table** table name **(Required)**.
+
+**Insert** insert and return result
+
+### Updater
+
+Update struct to database. Updater use `db` struct tag to resolve fields. If field is private or `db` tag is empty or equals `"-"` field ignored.
 
 ```go
-// Signature:
-func Find[T any](db *sqlx.DB, query string, args ...any) ([]T, error)
-func FindOpt[T any](db *sqlx.DB, query string, option Option[T], args ...any) ([]T, error)
+import (
+    "strings"
+    "github.com/gomig/database/v2"
+)
+
+type User struct{
+    Id      int     `db:"-"`
+    Name    string  `db:"name"`
+}
+
+john := User {
+    Id: 6,
+    Name: "Jack Ma",
+}
+
+// -> UPDATE users SET name = $1 WHERE id = $2;
+result, err := database.NewUpdater[User](db).
+    Table("users").
+    Where("id = ?", john.Id).
+    Update(john)
 ```
 
-### FindOne
+**NumericArgs** specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder.
 
-Read single result or return nil if not exists.
+**Table** table name **(Required)**.
 
-```go
-// Signature:
-func FindOne[T any](db *sqlx.DB, query string, args ...any) (*T, error)
-func FindOneOpt[T any](db *sqlx.DB, query string, option Option[T], args ...any) (*T, error)
-```
+**Where** update condition **(Required)**.
 
-### Count
-
-Get count of documents.
-
-```go
-// Signature:
-func Count(db *sqlx.DB, query string, args ...any) (int64, error)
-func CountOpt(db *sqlx.DB, query string, option Option[int64], args ...any) (int64, error)
-```
-
-### Insert
-
-Insert struct to database. This function use `db` tag to map struct field to database column.
-
-```go
-// Signature:
-func Insert[T any](db Executable, entity T, table string) (sql.Result, error)
-func InsertOpt[T any](db Executable, entity T, table string, option Option[T]) (sql.Result, error)
-```
-
-### Update
-
-Update struct in database. This function use `db` tag to map struct field to database column.
-
-```go
-// Signature:
-func Update[T any](db Executable, entity T, table string, condition string, args ...any) (sql.Result, error)
-func UpdateOpt[T any](db Executable, entity T, table string, condition string, option Option[T], args ...any) (sql.Result, error)
-```
+**Update** update and return result.
 
 ## Query Builder
 
 Make complex query use for sql `WHERE` command.
 
-**Note:** You can use special `@in` keyword in your query to make a `IN(param1, param2)` query for you.
+**Note:** You can use special `@in` placeholder in your query to make a `IN(param1, param2)` query for you.
 
-**Note:** In postgres related methods you must passed counter to replace `?` placeholder with counter value.
+**Note:** You can use special `@where` placeholder in your query to replace with `WHERE Raw()` value.
+
+**Note:** You can use special `@query` placeholder in your query to replace with `Raw()` value.
 
 ```go
-import "github.com/gomig/database/v2"
-import "fmt"
+import (
+    "fmt"
+    "github.com/gomig/database/v2"
+)
 
 query := database.NewQuery().
     And("firstname LIKE '%?%'", "John").
     AndIf(myConditionPassed, "role @in", "admin", "support", "user").
-    OrClosure("age > ? AND age < ?", 15, 30)
-raw := query.RawSQL() // "firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6)"
-query1 := query.ToPostgres(`SELECT * FROM users @where ORDER BY @sort @order;`, 1, "@sort", "name", "@order", "asc") // "SELECT * FROM users WHERE firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6) ORDER BY name asc;"
-query2 := query.ToSQL(`SELECT * FROM users WHERE @query`) // "SELECT * FROM users WHERE firstname LIKE '%?%' AND role IN (?,?,?) OR (age > ? AND age < ?);"
-params := query.Params() // [John admin support user 15 30]
+    OrClosure("age > ? AND age < ?", 15, 30).
+    OrIf(false, "id = ?", 5). // ignored because condition (first argument) not true
+    Replace("@sort", "name").
+    Replace("@order", "ASC")
+
+// -> firstname LIKE '%$5%' AND role IN ($6, $7, $8) OR (age > $9 AND age < $10)
+raw := query.Raw()
+
+// -> SELECT * users WHERE firstname LIKE '%$5%' AND role IN ($6, $7, $8) OR (age > $9 AND age < $10) ORDER BY name ASC;
+cmd := query.SQL(`SELECT * FROM USERS @where ORDER BY @sort @order;`) //
+
+// -> [John admin support user 15 30]
+args := query.Args()
 ```
 
-### And
+**And** add new simple condition to query with AND.
 
-Add new simple condition to query with `AND`.
+**AndIf** add new And condition if first parameter is true.
 
-```go
-// Signature:
-And(cond string, args ...any) QueryBuilder
-```
+**Or** add new simple condition to query with OR.
 
-### AndIf
+**OrIf** add new Or condition if first parameter is true.
 
-Add new And condition if first parameter is true.
+**AndClosure** add new condition to query with AND in nested `()`.
 
-```go
-// Signature:
-AndIf(ifCond bool, cond string, args ...any) QueryBuilder
-```
+**AndClosureIf** add new AndClosure condition if first parameter is true.
 
-### Or
+**OrClosure** add new condition to query with OR in nested `()`.
 
-Add new simple condition to query with `OR`.
+**OrClosureIf** add new AndClosure condition if first parameter is true.
 
-```go
-// Signature:
-Or(cond string, args ...any) QueryBuilder
-```
+**NumericArgs** specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder.
 
-### OrIf
+**NumericStart** set numeric argument start for numeric args mode.
 
-Add new Or condition if first parameter is true.
+**Replace** replace phrase in query string before run.
 
-```go
-// Signature:
-OrIf(ifCond bool, cond string, args ...any) QueryBuilder
-```
+**Raw** get raw generated query.
 
-### AndClosure
+**SQL** use generated query in part of sql command. this method replace `@query` with `Raw()` and `@where` with `WHERE Raw()` value.
 
-Add new condition to query with `AND` in nested `()`.
-
-```go
-// Signature:
-AndClosure(cond string, args ...any) QueryBuilder
-```
-
-### AndClosureIf
-
-Add new AndClosure condition if first parameter is true.
-
-```go
-// Signature:
-AndClosureIf(ifCond bool, cond string, args ...any) QueryBuilder
-```
-
-### OrClosure
-
-Add new condition to query with `OR` in nested `()`.
-
-```go
-// Signature:
-OrClosure(cond string, args ...any) QueryBuilder
-```
-
-### OrClosureIf
-
-Add new AndClosure condition if first parameter is true.
-
-```go
-// Signature:
-OrClosureIf(ifCond bool, cond string, args ...any) QueryBuilder
-```
-
-### RawPostgres
-
-Get raw generated query for postgres.
-
-```go
-// Signature:
-RawPostgres(counter int) string
-```
-
-### RawSQL
-
-Get raw generated query for mysql.
-
-```go
-// Signature:
-RawSQL() string
-```
-
-### ToPostgres
-
-Generate query string for postgres with numeric arguments based on counter. this method replace `@query` with `Raw()` and `@where` with `WHERE Raw()` value. You can define your own `@placeholder` and pass as `replacements` argument to replace in query before generate sql.
-
-```go
-// Signature:
-ToPostgres(query string, counter int, replacements ...string) string
-```
-
-### ToSQL
-
-Generate query string for sql with ? arguments. this method replace `@query` with `Raw()` and `@where` with `WHERE Raw()` value. You can define your own `@placeholder` and pass as `replacements` argument to replace in query before generate sql.
-
-```go
-// Signature:
-ToSQL(query string, replacements ...string) string
-```
-
-### Params
-
-Get list of query parameters.
-
-```go
-// Signature:
-Params() []any
-```
+**Args** get list of arguments.
 
 ## Nullable Types
 
@@ -317,9 +323,11 @@ var a types.UInt64Slice
 
 ## Migration
 
-Advanced migration for SQL based database.
+Advance stage based migration for SQL based database.
 
 **Note:** This package use `"github.com/jmoiron/sqlx"` as database driver.
+
+**Note:** You can pass stages list to automatically run on migrate.
 
 ```bash
 myApp migration [command]
@@ -327,23 +335,18 @@ myApp migration [command]
 
 ```go
 // Signature:
-MigrationCommand(db *sqlx.DB, root string) *cobra.Command
+MigrationCommand(db *sqlx.DB, root string, extension string, authExecute ...string) *cobra.Command
 
 // Example
 import "github.com/gomig/database/v2/migration"
-rootCmd.AddCommand(migration.MigrationCommand(myDB, "./database"))
+rootCmd.AddCommand(migration.MigrationCommand(myDB, "./database", "sql", "up", "index", "views"))
 ```
 
 ### Migration Script Structure
 
-Each migration script or file can contains 4 main section and defined with `--- [SECTION <name>]` line. Each migration file can contains 4 section:
+Each migration script or file can contains multiple stage `--- [STAGE <name>]` line. Each migration can have **DOWN** stage to rollback migration.
 
-- **UP:** scripts on this section used for create table and define database indexes.
-- **SCRIPT:** scripts on this section used for define procedure, function, triggers and etc.
-- **SEED:** scripts on this section used for seed database.
-- **DOWN:** scripts on this section used for rollback migration, script and seeds on migration file.
-
-**Note:** For writing multiple SQL script in single section you could add `-- [br]` in end of your command.
+**Note:** For writing multiple SQL script in single section you could add `-- [end]` in end of your command.
 
 ### Usage
 
@@ -369,16 +372,7 @@ myApp migration summery
 
 #### run
 
-Run `UP`, `SCRIPT` and `SEED` section scripts at same time.
-
-Flags:
-
-- `-d` or `--dir`: used to define directory of files.
-- `-n` or `--name`: used to run special script only.
-
-#### up
-
-Run `UP` scripts.
+Run stages scripts. Run auto execute stages list in order if not stage passed.
 
 Flags:
 
@@ -386,33 +380,8 @@ Flags:
 - `-n` or `--name`: used to run special script only.
 
 ```bash
-myApp migration up -n "create user"
-```
-
-#### script
-
-Run `SCRIPT` scripts.
-
-Flags:
-
-- `-d` or `--dir`: used to define directory of files.
-- `-n` or `--name`: used to run special script only.
-
-```bash
-myApp migration script -d "some\sub\dir"
-```
-
-#### seed
-
-Run `SEED` scripts.
-
-Flags:
-
-- `-d` or `--dir`: used to define directory of files.
-- `-n` or `--name`: used to run special script only.
-
-```bash
-myApp migration seed
+# run all (up stage) scripts and then run all (index stage) scripts
+myApp migration run up index
 ```
 
 #### down
@@ -430,31 +399,31 @@ myApp migration down
 
 ### Helpers Function
 
+#### ReadFS
+
+Read migration from file system.
+
+```go
+// Signature
+ReadFS(dir, ext string) (Files, error)
+```
+
+#### InitMigration
+
+Prepare database to run migrations.
+
+```go
+// Signature:
+func InitMigration(db *sqlx.DB) error
+```
+
 #### Migrate
 
-This function run "UP" scripts from _migrations list_ on database and return succeeded list as result.
+Run migration on database.
 
 ```go
 // Signature:
-func Migrate(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
-```
-
-#### Script
-
-This function run "SCRIPT" scripts from _migrations list_ on database and return succeeded list as result.
-
-```go
-// Signature:
-func Script(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
-```
-
-#### Seed
-
-This function run "SEED" scripts from _migrations list_ on database and return succeeded list as result.
-
-```go
-// Signature:
-func Seed(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
+func Migrate(db *sqlx.DB, stage string, files ...File) ([]string, error)
 ```
 
 #### Rollback
@@ -463,14 +432,23 @@ This function run "DOWN" scripts from _migrations list_ on database and return s
 
 ```go
 // Signature:
-func Seed(db *sqlx.DB, migrations []migration.MigrationsT, name string) ([]string, error)
+func Rollback(db *sqlx.DB, files ...File) ([]string, error)
 ```
 
-#### ReadDirectory
+#### StageMigrated
 
-This function read migration files to `[]migration.MigrationsT` entity.
+Get migrated items for stage.
 
 ```go
 // Signature:
-func ReadDirectory(dir string) (MigrationsT, error)
+StageMigrated(db *sqlx.DB, stage string) (Migrations, error)
+```
+
+#### Migrated
+
+Get migrated list.
+
+```go
+// Signature:
+Migrated(db *sqlx.DB) (Migrations, error)
 ```

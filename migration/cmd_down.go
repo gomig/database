@@ -5,23 +5,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func downCmd(db *sqlx.DB, root string) *cobra.Command {
+func downCmd(db *sqlx.DB, root, ext string) *cobra.Command {
 	var cmd = new(cobra.Command)
 	cmd.Use = "down"
 	cmd.Short = "rollback migrations"
 	cmd.Flags().StringP("name", "n", "", "migration name")
 	cmd.Flags().StringP("dir", "d", "", "directory path")
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		if files, err := ReadDirectory(uri(root, flag(cmd, "dir"))); err != nil {
+		if err := InitMigration(db); err != nil {
+			Formatter("{r}FAIL!{R} %s\n", err.Error())
+		} else if files, err := ReadFS(uri(root, flag(cmd, "dir")), ext); err != nil {
 			Formatter("{r}FAIL!{R} %s\n", err.Error())
 		} else if files.Len() == 0 {
-			Formatter("{m}{I}no migration found{R}\n")
+			Formatter("{m}{I}no migration file found{R}\n")
 		} else {
-			for _, file := range files {
-				if res, err := Rollback(db, flag(cmd, "name"), file); err != nil {
-					Formatter("{m}{I}%s{R} rollback: {r}FAIL!{R} %s\n", file.Name, err.Error())
-				} else if len(res) > 0 {
-					Formatter("{m}{I}%s{R} rollback: {g}OK!{R}\n", file.Name)
+			// prepare
+			if name := flag(cmd, "name"); name != "" {
+				files = files.Filter(name)
+			}
+
+			// execute
+			if migrated, err := Migrated(db); err != nil {
+				Formatter("{r}FAIL!{R} %s\n", err.Error())
+				return
+			} else {
+				for _, file := range files {
+					if ok, err := file.Rollback(db, migrated.Names()...); err != nil {
+						Formatter(
+							"%s {b}{B}[ROLLBACK]{R} {r}FAIL!{R} %s\n",
+							file.Name(), err.Error(),
+						)
+					} else if ok {
+						Formatter(
+							"%s {b}{B}[ROLLBACK]{R} {g}OK!{R}\n",
+							file.Name(),
+						)
+					}
 				}
 			}
 		}

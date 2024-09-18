@@ -1,107 +1,123 @@
 package database
 
 import (
-	"fmt"
+	"math"
 	"strings"
 )
 
-// qBuilder query manager
+type qItem struct {
+	Type    string
+	Query   string
+	Args    []any
+	Closure bool
+}
+
 type qBuilder struct {
-	queries []Query
+	numeric      bool
+	start        int
+	queries      []qItem
+	replacements []string
 }
 
-func (q *qBuilder) And(cond string, args ...any) QueryBuilder {
-	if cond != "" {
-		q.queries = append(q.queries, Query{
-			Type:    "AND",
-			Query:   cond,
-			Params:  args,
-			Closure: false,
-		})
-	}
-	return q
-}
-
-func (q *qBuilder) AndIf(ifCond bool, cond string, args ...any) QueryBuilder {
-	if ifCond {
-		return q.And(cond, args...)
+func (builder *qBuilder) addItem(q string, and, closure bool, args ...any) {
+	item := qItem{}
+	if and {
+		item.Type = "AND"
 	} else {
-		return q
+		item.Type = "OR"
 	}
+	item.Query = q
+	item.Closure = closure
+	item.Args = args
+	builder.queries = append(builder.queries, item)
 }
 
-func (q *qBuilder) Or(cond string, args ...any) QueryBuilder {
-	if cond != "" {
-		q.queries = append(q.queries, Query{
-			Type:    "OR",
-			Query:   cond,
-			Params:  args,
-			Closure: false,
-		})
+func (builder *qBuilder) And(query string, args ...any) QueryBuilder {
+	if query != "" {
+		builder.addItem(query, true, false, args...)
 	}
-	return q
+	return builder
 }
 
-func (q *qBuilder) OrIf(ifCond bool, cond string, args ...any) QueryBuilder {
-	if ifCond {
-		return q.Or(cond, args...)
-	} else {
-		return q
+func (builder *qBuilder) AndIf(cond bool, query string, args ...any) QueryBuilder {
+	if cond && query != "" {
+		builder.addItem(query, true, false, args...)
 	}
+	return builder
 }
 
-func (q *qBuilder) AndClosure(cond string, args ...any) QueryBuilder {
-	if cond != "" {
-		q.queries = append(q.queries, Query{
-			Type:    "AND",
-			Query:   cond,
-			Params:  args,
-			Closure: true,
-		})
+func (builder *qBuilder) Or(query string, args ...any) QueryBuilder {
+	if query != "" {
+		builder.addItem(query, false, false, args...)
 	}
-	return q
+	return builder
 }
 
-func (q *qBuilder) AndClosureIf(ifCond bool, cond string, args ...any) QueryBuilder {
-	if ifCond {
-		return q.AndClosure(cond, args...)
-	} else {
-		return q
+func (builder *qBuilder) OrIf(cond bool, query string, args ...any) QueryBuilder {
+	if cond && query != "" {
+		builder.addItem(query, false, false, args...)
 	}
+	return builder
 }
 
-func (q *qBuilder) OrClosure(cond string, args ...any) QueryBuilder {
-	if cond != "" {
-		q.queries = append(q.queries, Query{
-			Type:    "OR",
-			Query:   cond,
-			Params:  args,
-			Closure: true,
-		})
+func (builder *qBuilder) AndClosure(query string, args ...any) QueryBuilder {
+	if query != "" {
+		builder.addItem(query, true, true, args...)
 	}
-	return q
+	return builder
 }
 
-func (q *qBuilder) OrClosureIf(ifCond bool, cond string, args ...any) QueryBuilder {
-	if ifCond {
-		return q.OrClosure(cond, args...)
-	} else {
-		return q
+func (builder *qBuilder) AndClosureIf(cond bool, query string, args ...any) QueryBuilder {
+	if cond && query != "" {
+		builder.addItem(query, true, true, args...)
 	}
+	return builder
 }
 
-func (q qBuilder) sql() string {
+func (builder *qBuilder) OrClosure(query string, args ...any) QueryBuilder {
+	if query != "" {
+		builder.addItem(query, false, true, args...)
+	}
+	return builder
+}
+
+func (builder *qBuilder) OrClosureIf(cond bool, query string, args ...any) QueryBuilder {
+	if cond && query != "" {
+		builder.addItem(query, false, true, args...)
+	}
+	return builder
+}
+
+func (builder *qBuilder) NumericArgs(numeric bool) QueryBuilder {
+	builder.numeric = numeric
+	return builder
+}
+
+func (builder *qBuilder) NumericStart(start int) QueryBuilder {
+	builder.start = start
+	return builder
+}
+
+func (builder *qBuilder) Replace(old, new string) QueryBuilder {
+	builder.replacements = append(builder.replacements, old, new)
+	return builder
+}
+
+func (builder *qBuilder) Raw() string {
 	command := ""
-	for _, q := range q.queries {
+	for _, q := range builder.queries {
 		query := q.Query
-		// Compile In Params
+
+		// generate @in
 		if strings.Contains(query, "@in") {
-			params := "IN (?"
-			params = params + strings.Repeat(",?", len(q.Params)-1)
-			params = params + ")"
-			query = strings.Replace(query, "@in", params, 1)
+			placeholders := strings.TrimLeft(
+				strings.Repeat(", ?", len(q.Args)),
+				", ",
+			)
+			query = strings.Replace(query, "@in", "IN ("+placeholders+")", 1)
 		}
-		// Generate subquery
+
+		// generate subquery
 		if q.Closure {
 			query = "(" + query + ")"
 		}
@@ -109,46 +125,31 @@ func (q qBuilder) sql() string {
 		if command == "" {
 			command = query
 		} else {
-			command = fmt.Sprintf("%s %s %s", command, q.Type, query)
+			command = command + " " + q.Type + " " + query
 		}
 	}
+
+	if builder.numeric {
+		command = numericArgs(command, int(math.Max(float64(builder.start), 1)))
+	}
+
 	return command
 }
 
-func (q qBuilder) RawPostgres(counter int) string {
-	return numericArgs(q.sql(), counter)
-}
-
-func (q qBuilder) RawSQL() string {
-	return q.sql()
-}
-
-func (q qBuilder) ToPostgres(query string, counter int, replacements ...string) string {
-	replacer := strings.NewReplacer(
+func (builder *qBuilder) SQL(query string) string {
+	return strings.NewReplacer(
 		append(
-			replacements,
-			"@where", "WHERE "+q.RawPostgres(counter),
-			"@query", q.RawPostgres(counter),
+			builder.replacements,
+			"@query", builder.Raw(),
+			"@where", "WHERE "+builder.Raw(),
 		)...,
-	)
-	return replacer.Replace(query)
+	).Replace(query)
 }
 
-func (q qBuilder) ToSQL(query string, replacements ...string) string {
-	replacer := strings.NewReplacer(
-		append(
-			replacements,
-			"@where", "WHERE "+q.sql(),
-			"@query", q.sql(),
-		)...,
-	)
-	return replacer.Replace(query)
-}
-
-func (q qBuilder) Params() []any {
+func (builder *qBuilder) Args() []any {
 	args := make([]any, 0)
-	for _, q := range q.queries {
-		args = append(args, q.Params...)
+	for _, q := range builder.queries {
+		args = append(args, q.Args...)
 	}
 	return args
 }

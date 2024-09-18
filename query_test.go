@@ -7,28 +7,31 @@ import (
 )
 
 func TestQueryBuilder(t *testing.T) {
-	query := database.NewQuery()
-	query.And("firstname LIKE '%?%'", "John").
+	rawExp := `firstname LIKE '%$5%' AND role IN ($6, $7, $8) OR (age > $9 AND age < $10)`
+	rawQ := database.NewQuery().
+		And("firstname LIKE '%?%'", "John").
 		And("role @in", "admin", "support", "user").
-		OrClosure("age > ? AND age < ?", 15, 30)
-	if raw := query.RawPostgres(1); raw != `firstname LIKE '%$1%' AND role IN ($2,$3,$4) OR (age > $5 AND age < $6)` {
-		t.Log(raw)
-		t.Error("RawPostgres failed")
+		OrClosure("age > ? AND age < ?", 15, 30).
+		NumericStart(5)
+
+	if raw := rawQ.Raw(); raw != rawExp {
+		t.Logf("Expected: %s\nReturns: %s\n", rawExp, raw)
+		t.Error("Raw() failed")
 	}
 
-	if len(query.Params()) != 6 {
-		t.Error("Params resolve failed")
+	if len(rawQ.Args()) != 6 {
+		t.Error("Args() failed")
 	}
 
-	query = database.NewQuery().
+	sqlExp := `SELECT * FROM users WHERE name = ? AND id = ? ORDER BY name asc;`
+	sqlQ := database.NewQuery().
 		And("name = ?", "John Doe").
-		And("id = ?", 3)
-	if sql := query.ToPostgres(
-		`SELECT * FROM users @where ORDER BY @sort @order;`,
-		1, "@sort", "name", "@order", "asc",
-	); sql != `SELECT * FROM users WHERE name = $1 AND id = $2 ORDER BY name asc;` {
-		t.Log(sql)
-		t.Error("ToPostgres failed")
+		And("id = ?", 3).
+		NumericArgs(false).
+		Replace("@sort", "name").
+		Replace("@order", "asc")
+	if sql := sqlQ.SQL(`SELECT * FROM users @where ORDER BY @sort @order;`); sql != sqlExp {
+		t.Logf("Expected: %s\nReturns: %s\n", sqlExp, sql)
+		t.Error("SQL() failed")
 	}
-
 }
