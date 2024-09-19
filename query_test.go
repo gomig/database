@@ -34,4 +34,11 @@ func TestQueryBuilder(t *testing.T) {
 		t.Logf("Expected: %s\nReturns: %s\n", sqlExp, sql)
 		t.Error("SQL() failed")
 	}
+
+	sqlEmp := `SELECT * FROM users ;`
+	sqlE := database.NewQuery().AndIf(false, `1 = 1`)
+	if sql := sqlE.SQL(`SELECT * FROM users @where;`); sql != sqlEmp {
+		t.Logf("Expected: %s\nReturns: %s\n", sqlEmp, sql)
+		t.Error("SQL() failed")
+	}
 }

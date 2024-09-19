@@ -137,13 +137,23 @@ func (builder *qBuilder) Raw() string {
 }
 
 func (builder *qBuilder) SQL(query string) string {
-	return strings.NewReplacer(
-		append(
-			builder.replacements,
-			"@query", builder.Raw(),
-			"@where", "WHERE "+builder.Raw(),
-		)...,
-	).Replace(query)
+	if raw := builder.Raw(); raw == "" {
+		return strings.NewReplacer(
+			append(
+				builder.replacements,
+				"@query", raw,
+				"@where", "",
+			)...,
+		).Replace(query)
+	} else {
+		return strings.NewReplacer(
+			append(
+				builder.replacements,
+				"@query", raw,
+				"@where", "WHERE "+raw,
+			)...,
+		).Replace(query)
+	}
 }
 
 func (builder *qBuilder) Args() []any {
