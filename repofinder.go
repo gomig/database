@@ -82,25 +82,33 @@ func (finder *finderDriver[T]) Resolve(resolver func(*T) error) Finder[T] {
 }
 
 func (finder *finderDriver[T]) Single(args ...any) (*T, error) {
-	record := new(T)
-	if err := finder.db.Get(record, finder.sql(), args...); err == sql.ErrNoRows {
+	if cursor, err := finder.db.Queryx(finder.sql(), args...); err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	} else {
-		if decoder, ok := any(record).(IDecoder); ok {
-			if err := decoder.Decode(); err != nil {
+		defer cursor.Close()
+		for cursor.Next() {
+			record := new(T)
+			if err := cursor.StructScan(record); err != nil {
 				return nil, err
+			} else {
+				if decoder, ok := any(record).(IDecoder); ok {
+					if err := decoder.Decode(); err != nil {
+						return nil, err
+					}
+				}
+
+				for _, resolver := range finder.resolvers {
+					if err := resolver(record); err != nil {
+						return nil, err
+					}
+				}
+
+				return record, nil
 			}
 		}
-
-		for _, resolver := range finder.resolvers {
-			if err := resolver(record); err != nil {
-				return nil, err
-			}
-		}
-
-		return record, nil
+		return nil, nil
 	}
 }
 
@@ -111,6 +119,7 @@ func (finder *finderDriver[T]) Result(args ...any) ([]T, error) {
 		return nil, err
 	} else {
 		results := make([]T, 0)
+		defer cursor.Close()
 		for cursor.Next() {
 			record := new(T)
 			if err := cursor.StructScan(record); err != nil {
