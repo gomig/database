@@ -168,7 +168,7 @@ func (driver migration) Down(stage string, only ...string) ([]string, error) {
 	}
 
 	// Parse and load files
-	files := driver.fs.Filter(only...).FilterMigrated(migrated.Names()...)
+	files := driver.fs.Reverse().Filter(only...).FilterMigrated(migrated.Names()...)
 	if files.Len() == 0 {
 		return nil, nil
 	}
