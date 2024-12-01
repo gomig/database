@@ -37,7 +37,11 @@ func init() {
 
 // styling patterns
 //
-// {R}: RESET, {B}: BOLD ,{U}: UNDERLINE ,{S}: STRIKE ,{I}: ITALIC ,{r}: RED ,{g}: GREEN ,{y}: YELLOW ,{b}: BLUE ,{p}: PURPLE ,{c}: CYAN ,{m}: GRAY ,{w}: WHITE
+// {R}: RESET, {B}: BOLD ,{U}: UNDERLINE ,{S}: STRIKE
+// {I}: ITALIC ,{r}: RED ,{g}: GREEN ,{y}: YELLOW
+//
+// {b}: BLUE ,{p}: PURPLE ,{c}: CYAN ,{m}: GRAY
+// {w}: WHITE
 func Formatter(pattern string, args ...any) {
 	replacer := strings.NewReplacer(
 		"{R}", RESET,

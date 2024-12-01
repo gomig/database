@@ -327,6 +327,22 @@ Advance stage based migration for SQL based database.
 
 **Note:** This package use `"github.com/jmoiron/sqlx"` as database driver.
 
+### Create Migration Driver
+
+migration driver can build based on dir, embed or custom FS.
+
+```go
+import "github.com/gomig/database/v2/migration"
+driver, err := migration.NewDirMigration(myDB, "migrations", "sql")
+err := driver.Init()
+driver.Up("table", "create user table") // run table stage on create user table file
+driver.Down("table")
+```
+
+### Migration CLI
+
+migration has default cobra command for run migration from cli.
+
 **Note:** You can pass stages list to automatically run on migrate.
 
 ```bash
@@ -335,18 +351,17 @@ myApp migration [command]
 
 ```go
 // Signature:
-MigrationCommand(db *sqlx.DB, root string, extension string, authExecute ...string) *cobra.Command
+MigrationCommand(driver migration.Migration, authExecute ...string) *cobra.Command
 
 // Example
 import "github.com/gomig/database/v2/migration"
-rootCmd.AddCommand(migration.MigrationCommand(myDB, "./database", "sql", "up", "index", "views"))
+cmd := migration.MigrationCommand(driver, "table", "seed", "view")
+rootCMD.AddCommand(cmd)
 ```
 
 ### Migration Script Structure
 
-Each migration script or file can contains multiple stage `--- [STAGE <name>]` line. Each migration can have **DOWN** stage to rollback migration.
-
-**Note:** For writing multiple SQL script in single section you could add `-- [end]` in end of your command.
+Each migration script or file can contains multiple stage `-- [up <name>]` line. Each stage can have `-- [down <name>]` section to rollback migration.
 
 ### Usage
 
@@ -354,34 +369,31 @@ Each migration script or file can contains multiple stage `--- [STAGE <name>]` l
 
 This command create a new timestamp based standard migration file.
 
-Flags:
-
-- `-d` or `--dir`: used to define directory of files.
-
 ```bash
-myApp migration new "create user" -d "my sub/directory/path"
+myApp migration new "create user"
 ```
 
-#### summery
+#### summary
 
-Show summery of migration executed on database.
+Show summary of migration executed on database.
 
 ```bash
-myApp migration summery
+myApp migration summary
 ```
 
-#### run
+#### up
 
-Run stages scripts. Run auto execute stages list in order if not stage passed.
+Run stage scripts. if not stage defined `authExecute` parameter of MigrationCommand will executed in order.
 
 Flags:
 
-- `-d` or `--dir`: used to define directory of files.
 - `-n` or `--name`: used to run special script only.
 
 ```bash
-# run all (up stage) scripts and then run all (index stage) scripts
-myApp migration run up index
+# run all stages
+myApp migration up
+# run only view stage of "create users" file
+myApp migration up view -n "create users"
 ```
 
 #### down
@@ -390,65 +402,11 @@ Run `DOWN` scripts to rollback migrations.
 
 Flags:
 
-- `-d` or `--dir`: used to define directory of files.
 - `-n` or `--name`: used to run special script only.
 
 ```bash
-myApp migration down
-```
-
-### Helpers Function
-
-#### ReadFS
-
-Read migration from file system.
-
-```go
-// Signature
-ReadFS(dir, ext string) (Files, error)
-```
-
-#### InitMigration
-
-Prepare database to run migrations.
-
-```go
-// Signature:
-func InitMigration(db *sqlx.DB) error
-```
-
-#### Migrate
-
-Run migration on database.
-
-```go
-// Signature:
-func Migrate(db *sqlx.DB, stage string, files ...File) ([]string, error)
-```
-
-#### Rollback
-
-This function run "DOWN" scripts from _migrations list_ on database and return succeeded list as result.
-
-```go
-// Signature:
-func Rollback(db *sqlx.DB, files ...File) ([]string, error)
-```
-
-#### StageMigrated
-
-Get migrated items for stage.
-
-```go
-// Signature:
-StageMigrated(db *sqlx.DB, stage string) (Migrations, error)
-```
-
-#### Migrated
-
-Get migrated list.
-
-```go
-// Signature:
-Migrated(db *sqlx.DB) (Migrations, error)
+# rollback all stages
+myApp migration up
+# rollback only view stage of "create users" file
+myApp migration up view -n "create users"
 ```

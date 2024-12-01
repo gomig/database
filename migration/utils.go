@@ -19,14 +19,14 @@ func flag(cmd *cobra.Command, name string) string {
 	return ""
 }
 
-// uri get normalized path
-func uri(p ...string) string {
+// normalizePath get normalized path
+func normalizePath(p ...string) string {
 	return filepath.Clean(path.Join(p...))
 }
 
 // makeDir make nested directory if not exists
 func makeDir(dir string) error {
-	dir = uri(dir)
+	dir = normalizePath(dir)
 	if stat, err := os.Stat(dir); os.IsNotExist(err) {
 		return os.MkdirAll(dir, os.ModeDir|0755)
 	} else if err != nil {
@@ -37,53 +37,95 @@ func makeDir(dir string) error {
 	return nil
 }
 
-// readLines read valid lines for stage
-func readLines(content string, stage string) ([]string, error) {
-	trim := func(str string) string {
-		return strings.ToUpper(strings.ReplaceAll(str, " ", ""))
-	}
+// hardTrim remove all space and control character
+func hardTrim(str string) string {
+	str = strings.ReplaceAll(str, " ", "")
+	str = strings.ReplaceAll(str, "\t", "")
+	return str
+}
+
+// readStage read valid lines for stage
+func readStage(content, section, stage string) (string, error) {
 	normalize := func(str string) string {
-		return strings.NewReplacer("-- [end]", "--[END]", "--[end]", "--[END]").Replace(str)
+		return strings.ToLower(hardTrim(str))
 	}
-	isStage := func(str, stage string) bool {
-		if stage == "" {
-			return strings.HasPrefix(trim(str), "--[STAGE")
-		} else {
-			return strings.HasPrefix(trim(str), trim("--[STAGE"+stage+"]"))
-		}
+	isNewStage := func(str string) bool {
+		normalized := normalize(str)
+		return strings.HasPrefix(normalized, "--[up") || strings.HasPrefix(normalized, "--[down")
+	}
+	isPreferStage := func(str string) bool {
+		normalized := normalize(str)
+		return strings.HasPrefix(normalized, normalize("--["+section+stage))
 	}
 
-	lines := make([]string, 0)
 	founded := false
+	lines := make([]string, 0)
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if founded {
-			if isStage(line, "") {
+			if isNewStage(line) {
 				break
-			} else if trim(line) != "" {
-				lines = append(lines, normalize(line))
+			} else if hardTrim(line) != "" {
+				lines = append(lines, line)
 			}
-		} else if isStage(line, stage) {
+		} else if isPreferStage(line) {
 			founded = true
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return "", err
 	} else {
-		return lines, nil
+		return strings.Join(lines, "\n"), nil
 	}
 }
 
-// scriptsOf read scripts splitted bt -- [end] for stage
-func scriptsOf(content string, stage string) ([]string, error) {
-	if lines, err := readLines(content, stage); err != nil {
-		return nil, err
-	} else if len(lines) == 0 {
-		return []string{}, nil
+// splitCode split string with ;
+func splitCode(code string) []string {
+	if hardTrim(code) == "" {
+		return []string{}
 	} else {
-		return strings.Split(strings.Join(lines, "\r\n"), "--[END]"), nil
+		scripts := []string{}
+		addScript := func(script string) {
+			script = strings.TrimPrefix(script, "\n")
+			script = strings.TrimSuffix(script, "\n")
+			if hardTrim(script) != "" {
+				scripts = append(scripts, script+";")
+			}
+		}
+		var begin int
+		var inString bool
+		for i := 0; i < len(code); i++ {
+			if code[i] == ';' && !inString {
+				addScript(code[begin:i])
+				begin = i + 1
+			} else if code[i] == '"' || code[i] == '\'' {
+				if !inString {
+					inString = true
+				}
+			}
+		}
+		addScript(code[begin:])
+		return scripts
+	}
+}
+
+// upScripts read scripts for up section of script
+func upScripts(content string, stage string) ([]string, error) {
+	if code, err := readStage(content, "up", stage); err != nil {
+		return nil, err
+	} else {
+		return splitCode(code), nil
+	}
+}
+
+// downScripts read scripts for down section of script
+func downScripts(content string, stage string) ([]string, error) {
+	if code, err := readStage(content, "down", stage); err != nil {
+		return nil, err
+	} else {
+		return splitCode(code), nil
 	}
 }
