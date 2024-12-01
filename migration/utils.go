@@ -67,7 +67,7 @@ func readStage(content, section, stage string) (string, error) {
 		if founded {
 			if isNewStage(line) {
 				break
-			} else if hardTrim(line) != "" {
+			} else if hardTrim(line) != "" && !strings.HasPrefix(line, "--") {
 				lines = append(lines, line)
 			}
 		} else if isPreferStage(line) {
@@ -82,50 +82,20 @@ func readStage(content, section, stage string) (string, error) {
 	}
 }
 
-// splitCode split string with ;
-func splitCode(code string) []string {
-	if hardTrim(code) == "" {
-		return []string{}
-	} else {
-		scripts := []string{}
-		addScript := func(script string) {
-			script = strings.TrimPrefix(script, "\n")
-			script = strings.TrimSuffix(script, "\n")
-			if hardTrim(script) != "" {
-				scripts = append(scripts, script+";")
-			}
-		}
-		var begin int
-		var inString bool
-		for i := 0; i < len(code); i++ {
-			if code[i] == ';' && !inString {
-				addScript(code[begin:i])
-				begin = i + 1
-			} else if code[i] == '"' || code[i] == '\'' {
-				if !inString {
-					inString = true
-				}
-			}
-		}
-		addScript(code[begin:])
-		return scripts
-	}
-}
-
 // upScripts read scripts for up section of script
-func upScripts(content string, stage string) ([]string, error) {
+func upScripts(content string, stage string) (string, error) {
 	if code, err := readStage(content, "up", stage); err != nil {
-		return nil, err
+		return "", err
 	} else {
-		return splitCode(code), nil
+		return code, nil
 	}
 }
 
 // downScripts read scripts for down section of script
-func downScripts(content string, stage string) ([]string, error) {
+func downScripts(content string, stage string) (string, error) {
 	if code, err := readStage(content, "down", stage); err != nil {
-		return nil, err
+		return "", err
 	} else {
-		return splitCode(code), nil
+		return code, nil
 	}
 }

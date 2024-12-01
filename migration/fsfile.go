@@ -54,21 +54,13 @@ func (file File) Is(name string) bool {
 }
 
 // UpScripts get up section scripts
-func (file File) UpScripts(stage string) ([]string, error) {
-	if scripts, err := upScripts(file.content, stage); err != nil {
-		return nil, err
-	} else {
-		return scripts, nil
-	}
+func (file File) UpScripts(stage string) (string, error) {
+	return upScripts(file.content, stage)
 }
 
 // DownScripts get down section scripts
-func (file File) DownScripts(stage string) ([]string, error) {
-	if scripts, err := downScripts(file.content, stage); err != nil {
-		return nil, err
-	} else {
-		return scripts, nil
-	}
+func (file File) DownScripts(stage string) (string, error) {
+	return downScripts(file.content, stage)
 }
 
 // isMigrated check if file name is in migrated names and should skipped

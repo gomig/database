@@ -126,10 +126,8 @@ func (driver migration) Up(stage string, only ...string) ([]string, error) {
 			} else if len(scripts) == 0 {
 				continue
 			} else {
-				for _, script := range scripts {
-					if _, err := tx.Exec(script); err != nil {
-						return onFail(errOf(file.Name(), "UP", err))
-					}
+				if _, err := tx.Exec(scripts); err != nil {
+					return onFail(errOf(file.Name(), "UP", err))
 				}
 
 				if _, err := tx.Exec(fmt.Sprintf(
@@ -192,10 +190,8 @@ func (driver migration) Down(stage string, only ...string) ([]string, error) {
 			} else if len(scripts) == 0 {
 				continue
 			} else {
-				for _, script := range scripts {
-					if _, err := tx.Exec(script); err != nil {
-						return onFail(errOf(file.Name(), "DOWN", err))
-					}
+				if _, err := tx.Exec(scripts); err != nil {
+					return onFail(errOf(file.Name(), "DOWN", err))
 				}
 
 				if _, err := tx.Exec(fmt.Sprintf(
