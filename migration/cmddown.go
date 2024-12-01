@@ -30,17 +30,22 @@ func downCmd(driver Migration, autoExec []string) *cobra.Command {
 			names = append(names, name)
 		}
 
+		total := 0
 		for _, stage := range stages {
-			Formatter("Stage {b}{B}%s{R}:\n", stage)
 			if files, err := driver.Down(stage, names...); err != nil {
+				Formatter("Stage {b}{B}%s{R}:\n", stage)
 				Formatter("    {r}FAIL!{R} %s\n", err.Error())
-			} else if len(files) == 0 {
-				Formatter("    {m}{I}Nothing to rollback!{R}\n")
-			} else {
+			} else if len(files) > 0 {
+				total += len(files)
+				Formatter("Stage {b}{B}%s{R}:\n", stage)
 				for _, file := range files {
 					Formatter("    %s {g}RolledBack!{R}\n", file)
 				}
 			}
+		}
+
+		if total == 0 {
+			Formatter("{m}{I}Nothing to rollback!{R}\n")
 		}
 	}
 	return cmd
