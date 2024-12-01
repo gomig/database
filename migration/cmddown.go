@@ -1,6 +1,8 @@
 package migration
 
 import (
+	"slices"
+
 	"github.com/spf13/cobra"
 )
 
@@ -15,9 +17,12 @@ func downCmd(driver Migration, autoExec []string) *cobra.Command {
 			return
 		}
 
-		stages := append([]string{}, autoExec...)
+		var stages []string
 		if len(args) > 0 {
 			stages = append([]string{}, args...)
+		} else {
+			stages = append([]string{}, autoExec...)
+			slices.Reverse(stages)
 		}
 
 		names := []string{}
