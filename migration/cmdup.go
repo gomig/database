@@ -30,6 +30,7 @@ func upCmd(driver Migration, autoExec []string) *cobra.Command {
 			if files, err := driver.Up(stage, names...); err != nil {
 				Formatter("Stage {b}{B}%s{R}:\n", stage)
 				Formatter("    {r}FAIL!{R} %s\n", err.Error())
+				return
 			} else if len(files) > 0 {
 				total += len(files)
 				Formatter("Stage {b}{B}%s{R}:\n", stage)
