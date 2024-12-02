@@ -43,8 +43,8 @@ func NewMigrationFile(root, name, ext string, stages ...string) error {
 	// generate template
 	content := make([]string, 0)
 	for _, stage := range stages {
-		content = append(content, fmt.Sprintf("-- [up %s]\n\n", stage))
-		content = append(content, fmt.Sprintf("-- [down %s]\n\n", stage))
+		content = append(content, fmt.Sprintf("-- { up: %s }\n\n", stage))
+		content = append(content, fmt.Sprintf("-- { down: %s }\n\n", stage))
 	}
 
 	// write file

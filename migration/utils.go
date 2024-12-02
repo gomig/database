@@ -51,11 +51,14 @@ func readStage(content, section, stage string) (string, error) {
 	}
 	isNewStage := func(str string) bool {
 		normalized := normalize(str)
-		return strings.HasPrefix(normalized, "--[up ") || strings.HasPrefix(normalized, "--[down ")
+		return strings.HasPrefix(normalized, "--{up:") || strings.HasPrefix(normalized, "--{down:")
+	}
+	isComment := func(str string) bool {
+		return strings.HasPrefix(normalize(str), "--")
 	}
 	isPreferStage := func(str string) bool {
 		normalized := normalize(str)
-		return strings.HasPrefix(normalized, normalize("--["+section+stage))
+		return strings.HasPrefix(normalized, normalize("--{"+section+":"+stage))
 	}
 
 	founded := false
@@ -67,7 +70,7 @@ func readStage(content, section, stage string) (string, error) {
 		if founded {
 			if isNewStage(line) {
 				break
-			} else if hardTrim(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "--") {
+			} else if hardTrim(line) != "" && !isComment(line) {
 				lines = append(lines, line)
 			}
 		} else if isPreferStage(line) {
