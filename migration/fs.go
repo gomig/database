@@ -92,7 +92,7 @@ func NewEmbedFS(f embed.FS, root, ext string) (FS, error) {
 		if ok, err := regexp.MatchString(`^([0-9])(.+)(\.`+ext+`)$`, entry.Name()); err != nil {
 			return err
 		} else if ok && !entry.IsDir() {
-			if content, err := os.ReadFile(pth); err != nil {
+			if content, err := fs.ReadFile(f, pth); err != nil {
 				return err
 			} else {
 				result = append(result, File{name: entry.Name(), ext: ext, content: string(content)})
