@@ -2,10 +2,7 @@ package migration
 
 import (
 	"fmt"
-	"os"
 	"strings"
-
-	"golang.org/x/sys/windows"
 )
 
 const (
@@ -26,14 +23,6 @@ const (
 	GRAY   = "\033[37m"
 	WHITE  = "\033[37m"
 )
-
-func init() {
-	stdout := windows.Handle(os.Stdout.Fd())
-	var originalMode uint32
-
-	windows.GetConsoleMode(stdout, &originalMode)
-	windows.SetConsoleMode(stdout, originalMode|windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING)
-}
 
 // styling patterns
 //
