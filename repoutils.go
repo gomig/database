@@ -16,13 +16,13 @@ type Executable interface {
 }
 
 // structQueryColumns get columns list from `q` or `db` struct tag
-func structQueryColumns(v any) []string {
+func structQueryColumns(v any, quoted bool) []string {
 	val := reflect.ValueOf(v)
 	if val.Kind() == reflect.Pointer {
 		if val.IsNil() || !val.Elem().CanInterface() {
 			return []string{}
 		} else {
-			return structQueryColumns(val.Elem().Interface())
+			return structQueryColumns(val.Elem().Interface(), quoted)
 		}
 	} else if val.Kind() != reflect.Struct {
 		return []string{}
@@ -32,14 +32,22 @@ func structQueryColumns(v any) []string {
 		for i := 0; i < typ.NumField(); i++ {
 			if typ.Field(i).IsExported() {
 				if typ.Field(i).Anonymous {
-					res = append(res, structQueryColumns(val.Field(i).Interface())...)
+					res = append(res, structQueryColumns(val.Field(i).Interface(), quoted)...)
 				} else {
 					if q, ok := typ.Field(i).Tag.Lookup("q"); ok {
 						if q != "-" && q != "" {
-							res = append(res, q)
+							if quoted {
+								res = append(res, `"`+q+`"`)
+							} else {
+								res = append(res, q)
+							}
 						}
 					} else if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
-						res = append(res, tag)
+						if quoted {
+							res = append(res, `"`+tag+`"`)
+						} else {
+							res = append(res, tag)
+						}
 					}
 				}
 			}
@@ -49,13 +57,13 @@ func structQueryColumns(v any) []string {
 }
 
 // structColumns get columns list from `db` struct tag
-func structColumns(v any) []string {
+func structColumns(v any, quoted bool) []string {
 	val := reflect.ValueOf(v)
 	if val.Kind() == reflect.Pointer {
 		if val.IsNil() || !val.Elem().CanInterface() {
 			return []string{}
 		} else {
-			return structColumns(val.Elem().Interface())
+			return structColumns(val.Elem().Interface(), quoted)
 		}
 	} else if val.Kind() != reflect.Struct {
 		return []string{}
@@ -65,7 +73,11 @@ func structColumns(v any) []string {
 		for i := 0; i < typ.NumField(); i++ {
 			if typ.Field(i).IsExported() {
 				if tag, ok := typ.Field(i).Tag.Lookup("db"); ok && tag != "-" && tag != "" {
-					res = append(res, tag)
+					if quoted {
+						res = append(res, `"`+tag+`"`)
+					} else {
+						res = append(res, tag)
+					}
 				}
 			}
 		}

@@ -10,6 +10,8 @@ import (
 type Finder[T any] interface {
 	// NumericArgs specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder
 	NumericArgs(isNumeric bool) Finder[T]
+	// QuoteFields specifies whether to use quoted field name ("id", "name") or not
+	QuoteFields(quoted bool) Finder[T]
 	// Query set sql query
 	Query(query string) Finder[T]
 	// Replace replace phrase in query string before run
@@ -26,12 +28,14 @@ func NewFinder[T any](db *sqlx.DB) Finder[T] {
 	finder := new(finderDriver[T])
 	finder.db = db
 	finder.numeric = true
+	finder.quoted = true
 	return finder
 }
 
 type finderDriver[T any] struct {
 	db           *sqlx.DB
 	numeric      bool
+	quoted       bool
 	query        string
 	replacements []string
 	resolvers    []func(*T) error
@@ -43,7 +47,7 @@ func (finder *finderDriver[T]) sql() string {
 		finder.replacements = append(
 			finder.replacements,
 			"@fields",
-			strings.Join(structQueryColumns(sample), " ,"),
+			strings.Join(structQueryColumns(sample, finder.quoted), " ,"),
 		)
 	}
 
@@ -63,6 +67,11 @@ func (finder *finderDriver[T]) sql() string {
 
 func (finder *finderDriver[T]) NumericArgs(numeric bool) Finder[T] {
 	finder.numeric = numeric
+	return finder
+}
+
+func (finder *finderDriver[T]) QuoteFields(quoted bool) Finder[T] {
+	finder.quoted = quoted
 	return finder
 }
 

@@ -8,6 +8,8 @@ import (
 type Updater[T any] interface {
 	// NumericArgs specifies whether to use numeric ($1, $2) or normal (?, ?) placeholder
 	NumericArgs(isNumeric bool) Updater[T]
+	// QuoteFields specifies whether to use quoted field name ("id", "name") or not
+	QuoteFields(quoted bool) Updater[T]
 	// Table table name
 	Table(table string) Updater[T]
 	// Where update condition
@@ -20,12 +22,14 @@ func NewUpdater[T any](db Executable) Updater[T] {
 	updater := new(updaterDriver[T])
 	updater.db = db
 	updater.numeric = true
+	updater.quoted = true
 	return updater
 }
 
 type updaterDriver[T any] struct {
 	db        Executable
 	numeric   bool
+	quoted    bool
 	table     string
 	condition string
 	args      []any
@@ -33,6 +37,11 @@ type updaterDriver[T any] struct {
 
 func (updater *updaterDriver[T]) NumericArgs(numeric bool) Updater[T] {
 	updater.numeric = numeric
+	return updater
+}
+
+func (updater *updaterDriver[T]) QuoteFields(quoted bool) Updater[T] {
+	updater.quoted = quoted
 	return updater
 }
 
@@ -48,7 +57,7 @@ func (updater *updaterDriver[T]) Where(cond string, args ...any) Updater[T] {
 }
 
 func (updater *updaterDriver[T]) Update(entity T) (sql.Result, error) {
-	fields := structColumns(entity)
+	fields := structColumns(entity, updater.quoted)
 	for i, v := range fields {
 		fields[i] = v + " = ?"
 	}
