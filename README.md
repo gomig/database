@@ -146,6 +146,8 @@ all, err := database.NewFinder[User](db).
 
 **Resolve** reginster new resolver to run on record after read.
 
+**Cursor** get sqlx cursor, this method return nil of no rows exists.
+
 **Single** get first result.
 
 **Result** get multiple result.

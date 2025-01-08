@@ -18,6 +18,8 @@ type Finder[T any] interface {
 	Replace(old string, new string) Finder[T]
 	// Resolve reginster new resolver to run on record after read
 	Resolve(resolver func(*T) error) Finder[T]
+	// Cursor get sqlx cursor, this method return nil of no rows exists
+	Cursor(args ...any) (*sqlx.Rows, error)
 	// Single get first result
 	Single(args ...any) (*T, error)
 	// Result get multiple result
@@ -88,6 +90,16 @@ func (finder *finderDriver[T]) Replace(old, new string) Finder[T] {
 func (finder *finderDriver[T]) Resolve(resolver func(*T) error) Finder[T] {
 	finder.resolvers = append(finder.resolvers, resolver)
 	return finder
+}
+
+func (finder *finderDriver[T]) Cursor(args ...any) (*sqlx.Rows, error) {
+	if cursor, err := finder.db.Queryx(finder.sql(), args...); err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	} else {
+		return cursor, nil
+	}
 }
 
 func (finder *finderDriver[T]) Single(args ...any) (*T, error) {
